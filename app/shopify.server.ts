@@ -3,10 +3,12 @@ import { ApiVersion, AppDistribution, shopifyApp } from "@shopify/shopify-app-re
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 import { ensureStoreInfrastructure, getOrCreateSettings } from "./services/settings.server";
+import { shopifyLogger } from "./lib/shopify-logger.server";
 
 export const API_VERSION = ApiVersion.October25;
 
 const shopify = shopifyApp({
+  logger: shopifyLogger,
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
   apiVersion: API_VERSION,

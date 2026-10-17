@@ -75,6 +75,12 @@ PostgreSQL's existing records must be backed up using your provider's tools.
   `shopify.app.toml`, the secret belongs to that same app, and
   `SHOPIFY_APP_URL` matches the deployed HTTPS origin and configured redirect
   URLs. Check server logs without sharing tokens or secrets.
+- Authentication validation failures emit `[PicoSEO/auth] session_token_rejected`
+  with a fixed reason: `client_id_mismatch`, `signature_mismatch`,
+  `token_expired`, `token_not_yet_valid`, or `invalid_session_token`.
+  `signature_mismatch` means the configured secret could not verify the token;
+  check the app identity and deployed secret, including credential rotation.
+  Raw Shopify debug output is suppressed because it contains JWTs and payloads.
 - After deployment, verify launch from Shopify Admin, navigation between app
   pages, and reconnecting after an expired session. An unauthenticated HTTP
   check alone cannot prove an installed merchant's session works.
