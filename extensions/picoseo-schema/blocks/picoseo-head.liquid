@@ -1,0 +1,204 @@
+{% comment %}
+  PicoSEO — Zero-JavaScript Storefront Head Embed
+  ------------------------------------------------
+  100% server-rendered Shopify Liquid. Zero client-side JS (0.0 kB script payload).
+  - Preloads the primary product hero image with fetchpriority="high" to accelerate
+    Core Web Vitals Largest Contentful Paint (LCP).
+  - Injects Schema.org Product, Offer, Brand, and Conversational FAQPage JSON-LD
+    so Google Rich Results and AI Answer Engines (ChatGPT, Perplexity, Claude)
+    index accurate pricing, stock state, and brand authority.
+  - Advertises the store's /llms.txt AI crawler feed via a discovery link tag.
+{% endcomment %}
+
+{%- liquid
+  assign pico_cfg = app.metafields.picoseo.config.value
+  assign enable_lcp = block.settings.enable_lcp_preload
+  assign enable_schema = block.settings.enable_json_ld
+  assign enable_faq = block.settings.enable_conversational_faq
+  assign enable_llms = block.settings.enable_llms_link
+
+  if pico_cfg != blank
+    if pico_cfg.lcp_preload == false
+      assign enable_lcp = false
+    endif
+    if pico_cfg.json_ld == false
+      assign enable_schema = false
+    endif
+    if pico_cfg.llms == false
+      assign enable_llms = false
+    endif
+    assign store_brand_name = pico_cfg.store_name | default: shop.name
+  else
+    assign store_brand_name = shop.name
+  endif
+-%}
+
+{%- if enable_llms -%}
+  <link rel="alternate" type="text/plain" title="{{ store_brand_name | escape }} AI Catalog (llms.txt)" href="{{ shop.url }}/llms.txt">
+{%- endif -%}
+
+{%- if request.page_type == 'product' and product != blank -%}
+  {%- assign hero_image = product.selected_or_first_available_variant.featured_image | default: product.featured_media.preview_image | default: product.featured_image -%}
+
+  {%- if enable_lcp and hero_image != blank -%}
+    <link
+      rel="preload"
+      as="image"
+      href="{{ hero_image | image_url: width: 1200 }}"
+      imagesrcset="{{ hero_image | image_url: width: 480 }} 480w, {{ hero_image | image_url: width: 800 }} 800w, {{ hero_image | image_url: width: 1200 }} 1200w, {{ hero_image | image_url: width: 1600 }} 1600w"
+      imagesizes="(max-width: 749px) 100vw, 50vw"
+      fetchpriority="high"
+    >
+  {%- endif -%}
+
+  {%- if enable_schema -%}
+    {%- assign canonical_product_url = shop.url | append: product.url -%}
+    {%- assign brand_name = product.vendor | default: store_brand_name -%}
+    {%- assign clean_desc = product.description | strip_html | strip_newlines | truncate: 4800 -%}
+    {%- assign next_year = 'now' | date: '%Y' | plus: 1 -%}
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "@id": {{ canonical_product_url | append: '#product' | json }},
+      "name": {{ product.title | json }},
+      "url": {{ canonical_product_url | json }},
+      "description": {{ clean_desc | default: product.title | json }},
+      {%- if product.media.size > 0 -%}
+      "image": [
+        {%- for media in product.media limit: 8 -%}
+          {{ media.preview_image | image_url: width: 1200 | prepend: 'https:' | json }}{% unless forloop.last %},{% endunless %}
+        {%- endfor -%}
+      ],
+      {%- endif -%}
+      {%- if product.selected_or_first_available_variant.sku != blank -%}
+      "sku": {{ product.selected_or_first_available_variant.sku | json }},
+      {%- endif -%}
+      {%- if product.selected_or_first_available_variant.barcode != blank -%}
+      "gtin": {{ product.selected_or_first_available_variant.barcode | json }},
+      {%- endif -%}
+      {%- if product.type != blank -%}
+      "category": {{ product.type | json }},
+      {%- endif -%}
+      "brand": {
+        "@type": "Brand",
+        "name": {{ brand_name | json }}
+      },
+      "offers": [
+        {%- for variant in product.variants limit: 50 -%}
+        {
+          "@type": "Offer",
+          "name": {{ variant.title | json }},
+          "url": {{ canonical_product_url | append: '?variant=' | append: variant.id | json }},
+          {%- if variant.sku != blank -%}
+          "sku": {{ variant.sku | json }},
+          {%- endif -%}
+          "price": {{ variant.price | divided_by: 100.0 | json }},
+          "priceCurrency": {{ cart.currency.iso_code | default: shop.currency | json }},
+          "priceValidUntil": "{{ next_year }}-12-31",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/{% if variant.available %}InStock{% else %}OutOfStock{% endif %}",
+          "seller": {
+            "@type": "Organization",
+            "name": {{ store_brand_name | json }}
+          }
+        }{% unless forloop.last %},{% endunless %}
+        {%- endfor -%}
+      ]
+    }
+    </script>
+
+    {%- if enable_faq -%}
+      {%- assign formatted_price = product.price | money_without_trailing_zeros | strip_html -%}
+      {%- assign short_answer = clean_desc | truncatewords: 55 | default: product.title -%}
+      <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": {{ 'What is ' | append: product.title | append: '?' | json }},
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": {{ short_answer | json }}
+            }
+          },
+          {
+            "@type": "Question",
+            "name": {{ 'How much does ' | append: product.title | append: ' cost?' | json }},
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": {{ product.title | append: ' is available at ' | append: store_brand_name | append: ' starting at ' | append: formatted_price | append: '.' | json }}
+            }
+          },
+          {
+            "@type": "Question",
+            "name": {{ 'Is ' | append: product.title | append: ' currently in stock?' | json }},
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": {% if product.available %}{{ 'Yes, ' | append: product.title | append: ' is in stock and ready to ship from ' | append: store_brand_name | append: '.' | json }}{% else %}{{ product.title | append: ' is currently out of stock at ' | append: store_brand_name | append: '.' | json }}{% endif %}
+            }
+          },
+          {
+            "@type": "Question",
+            "name": {{ 'Who manufactures ' | append: product.title | append: '?' | json }},
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": {{ product.title | append: ' is crafted by ' | append: brand_name | append: ' and sold officially by ' | append: store_brand_name | append: '.' | json }}
+            }
+          }
+        ]
+      }
+      </script>
+    {%- endif -%}
+  {%- endif -%}
+{%- elsif request.page_type == 'index' and enable_schema -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": {{ store_brand_name | json }},
+    "url": {{ shop.url | json }},
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "{{ shop.url }}/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "PicoSEO Schema & LCP",
+  "target": "head",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enable_json_ld",
+      "label": "Inject Product, Offer & Brand JSON-LD schema",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_conversational_faq",
+      "label": "Inject Conversational FAQ JSON-LD for AI search",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_lcp_preload",
+      "label": "Preload primary product image (Core Web Vitals LCP)",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_llms_link",
+      "label": "Advertise /llms.txt AI crawler discovery feed",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

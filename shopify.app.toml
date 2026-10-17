@@ -1,0 +1,68 @@
+# PicoSEO — Shopify app configuration
+# Docs: https://shopify.dev/docs/apps/tools/cli/configuration
+#
+# The app name is intentionally short ("PicoSEO") so it never truncates in the
+# Shopify Admin left navigation rail.
+#
+# Replace `client_id` with the value from your Partner Dashboard (or run
+# `npm run config:link`), and replace the Vercel domain below with your
+# production deployment URL.
+
+client_id = "REPLACE_WITH_SHOPIFY_CLIENT_ID"
+name = "PicoSEO"
+handle = "picoseo"
+application_url = "https://pico-seo-shopify-app.vercel.app"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+include_config_on_deploy = true
+
+[access_scopes]
+# Products: catalog audit + SEO/alt-text writes
+# Themes: detect app-embed activation in the live theme
+# Content: storefront content + app-owned metafield config
+# Files: alt-text updates on product MediaImage nodes (fileUpdate)
+# Navigation: /llms.txt and IndexNow key URL redirects
+scopes = "read_products,write_products,read_themes,write_themes,read_content,write_content,read_files,write_files,read_online_store_navigation,write_online_store_navigation"
+
+[auth]
+redirect_urls = [
+  "https://pico-seo-shopify-app.vercel.app/auth/callback",
+  "https://pico-seo-shopify-app.vercel.app/auth/shopify/callback",
+  "https://pico-seo-shopify-app.vercel.app/api/auth/callback"
+]
+
+[webhooks]
+api_version = "2025-10"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/update" ]
+  uri = "/webhooks/products/update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app_subscriptions/update" ]
+  uri = "/webhooks/app_subscriptions/update"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  uri = "/webhooks/compliance"
+
+# Storefront requests to https://{shop}/apps/picoseo/* are proxied to /proxy/*
+#   /apps/picoseo/llms.txt           -> AI crawler feed
+#   /apps/picoseo/indexnow-key.txt   -> IndexNow ownership key
+[app_proxy]
+url = "https://pico-seo-shopify-app.vercel.app/proxy"
+subpath = "picoseo"
+prefix = "apps"
+
+[pos]
+embedded = false

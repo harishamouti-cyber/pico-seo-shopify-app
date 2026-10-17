@@ -1,0 +1,8 @@
+api_version = "2025-10"
+
+[[extensions]]
+name = "PicoSEO Zero-JS Schema & LCP"
+handle = "picoseo-schema"
+type = "theme"
+uid = "eb976850-45f1-4a7e-8a32-7c9801d2197e"
+description = "Zero-JavaScript Liquid JSON-LD Schema.org injection (Product, Offer, Brand, Conversational FAQ) and Core Web Vitals LCP image preload."

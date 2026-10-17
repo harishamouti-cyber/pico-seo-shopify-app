@@ -1,0 +1,647 @@
+/* ==========================================================================
+   PicoSEO Design System
+   Inspired by 21st.dev, Cult UI, Skiper UI & Watermelon UI
+   Built for Shopify Admin compliant
+   ========================================================================== */
+
+:root {
+  --pico-canvas: #f1f2f4;
+  --pico-surface: #ffffff;
+  --pico-surface-subtle: #f8fafc;
+  --pico-surface-muted: #f1f5f9;
+  --pico-surface-dark: #090d16;
+  --pico-surface-dark-2: #111827;
+  --pico-border: #e2e8f0;
+  --pico-border-strong: #cbd5e1;
+  --pico-text: #0f172a;
+  --pico-text-secondary: #475569;
+  --pico-text-muted: #64748b;
+  --pico-accent: #2563eb;
+  --pico-accent-soft: #eff6ff;
+  --pico-emerald: #10b981;
+  --pico-emerald-soft: #ecfdf5;
+  --pico-amber: #f59e0b;
+  --pico-amber-soft: #fffbeb;
+  --pico-rose: #ef4444;
+  --pico-rose-soft: #fef2f2;
+  --pico-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --pico-spring-bouncy: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --pico-shadow-bento:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 12px -2px rgba(15, 23, 42, 0.05),
+    0 12px 28px -6px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+  --pico-shadow-elevated:
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 12px 32px -6px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+}
+
+/* Unslashed round tabular numerals everywhere */
+.pico-tabular,
+.pico-kpi-value,
+.pico-score-num,
+.pico-badge,
+.pico-table td,
+.pico-mono-num {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "zero" 0;
+}
+
+.pico-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 24px 56px;
+  color: var(--pico-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cult UI & 21st.dev Bento Card with 1px inner border & top-edge specular highlight */
+.pico-bento-card {
+  position: relative;
+  background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+  border: 1px solid var(--pico-border);
+  border-radius: 16px;
+  box-shadow: var(--pico-shadow-bento);
+  padding: 20px 22px;
+  overflow: hidden;
+  transition:
+    transform 260ms var(--pico-spring),
+    box-shadow 260ms var(--pico-spring),
+    border-color 220ms ease;
+}
+
+.pico-bento-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.95) 30%,
+    rgba(148, 163, 184, 0.32) 50%,
+    rgba(255, 255, 255, 0.95) 70%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.pico-bento-card--interactive:hover {
+  border-color: var(--pico-border-strong);
+  box-shadow: var(--pico-shadow-elevated);
+  transform: translateY(-1px);
+}
+
+.pico-bento-card--hero {
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(37, 99, 235, 0.07) 0%, rgba(255, 255, 255, 0) 55%),
+    radial-gradient(100% 100% at 100% 0%, rgba(16, 185, 129, 0.06) 0%, rgba(255, 255, 255, 0) 50%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.pico-bento-card--slate {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+/* System Health Bar */
+.pico-health-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--pico-border);
+  box-shadow: var(--pico-shadow-bento);
+  margin-bottom: 16px;
+}
+
+.pico-health-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pico-health-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pico-text-secondary);
+  background: #ffffff;
+  border: 1px solid var(--pico-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Glowing live status indicators */
+@keyframes picoPulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45), 0 0 8px rgba(16, 185, 129, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12), 0 0 12px rgba(16, 185, 129, 0.75);
+  }
+}
+
+.pico-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.pico-status-dot--live {
+  background: var(--pico-emerald);
+  animation: picoPulseGlow 2.4s infinite ease-in-out;
+}
+
+.pico-status-dot--amber {
+  background: var(--pico-amber);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
+}
+
+.pico-status-dot--muted {
+  background: #94a3b8;
+}
+
+/* Grid systems */
+.pico-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .pico-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pico-hero-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+@media (max-width: 860px) {
+  .pico-hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Balanced two-column split layout for /app/settings */
+.pico-split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(380px, 0.95fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1040px) {
+  .pico-split-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pico-sticky-preview {
+  position: sticky;
+  top: 16px;
+}
+
+/* Skiper UI / Watermelon UI fluid spring segmented control */
+.pico-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 11px;
+  background: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.pico-segmented-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--pico-text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 260ms var(--pico-spring),
+    color 200ms ease,
+    transform 260ms var(--pico-spring-bouncy),
+    box-shadow 260ms var(--pico-spring);
+}
+
+.pico-segmented-btn:hover {
+  color: var(--pico-text);
+}
+
+.pico-segmented-btn--active {
+  background: #ffffff;
+  color: var(--pico-text);
+  font-weight: 600;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.08),
+    0 3px 8px -2px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: scale(1.01);
+}
+
+/* Spring-physics stage for preview content & device bezels */
+@keyframes picoSpringFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.pico-spring-stage {
+  animation: picoSpringFadeIn 320ms var(--pico-spring) both;
+}
+
+.pico-bezel-frame {
+  margin: 0 auto;
+  border-radius: 14px;
+  border: 1px solid var(--pico-border);
+  background: #ffffff;
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.04),
+    0 10px 24px -8px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  transition:
+    max-width 380ms var(--pico-spring),
+    padding 340ms var(--pico-spring),
+    border-radius 340ms var(--pico-spring);
+}
+
+.pico-bezel-frame--desktop {
+  max-width: 100%;
+}
+
+.pico-bezel-frame--mobile {
+  max-width: 360px;
+  border-width: 2px;
+  border-color: #cbd5e1;
+  border-radius: 22px;
+}
+
+/* Clickable dynamic variable chips */
+.pico-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pico-token-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1e293b;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition:
+    transform 200ms var(--pico-spring-bouncy),
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.pico-token-chip:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.pico-token-chip:active {
+  transform: scale(0.96);
+}
+
+/* Product thumbnail frame — strict object-fit: contain so images never crop */
+.pico-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  border: 1px solid var(--pico-border);
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.pico-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.pico-thumb--lg {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  padding: 6px;
+}
+
+/* Audit Table */
+.pico-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--pico-border);
+  background: #ffffff;
+}
+
+.pico-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.pico-table th {
+  padding: 11px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pico-text-muted);
+  background: #f8fafc;
+  border-bottom: 1px solid var(--pico-border);
+  white-space: nowrap;
+}
+
+.pico-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  font-size: 13.5px;
+}
+
+.pico-table tr:last-child td {
+  border-bottom: none;
+}
+
+.pico-table tr:hover td {
+  background: #fafbfc;
+}
+
+/* Badges & Issue Pills */
+.pico-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.pico-pill--success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.pico-pill--warning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.pico-pill--critical {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.pico-pill--info {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.pico-pill--blue {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+/* Buttons */
+.pico-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    transform 180ms var(--pico-spring),
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 180ms ease;
+  text-decoration: none;
+}
+
+.pico-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pico-btn--primary {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  border-color: #0f172a;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.pico-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  transform: translateY(-1px);
+}
+
+.pico-btn--secondary {
+  background: #ffffff;
+  color: var(--pico-text);
+  border-color: var(--pico-border-strong);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.pico-btn--secondary:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* Input & Textarea */
+.pico-input,
+.pico-textarea,
+.pico-select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--pico-border-strong);
+  background: #ffffff;
+  color: var(--pico-text);
+  font-size: 13.5px;
+  line-height: 1.45;
+  font-family: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+  box-sizing: border-box;
+}
+
+.pico-input:focus,
+.pico-textarea:focus,
+.pico-select:focus {
+  outline: none;
+  border-color: var(--pico-accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+/* Code / JSON-LD Preformatted blocks */
+.pico-code-block {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #090d16;
+  color: #e2e8f0;
+  font-family: "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-x: auto;
+  max-height: 400px;
+  border: 1px solid #1e293b;
+}
+
+/* Wide Centered Subscription Billing Page (/app/billing) */
+.pico-billing-canvas {
+  background: #f1f2f4;
+  min-height: calc(100vh - 40px);
+  padding: 28px 20px 64px;
+}
+
+.pico-billing-container {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pico-billing-pro-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 2px solid #2563eb;
+  border-radius: 18px;
+  padding: 28px 30px;
+  box-shadow:
+    0 4px 12px rgba(37, 99, 235, 0.08),
+    0 20px 40px -12px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.pico-billing-price-box {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin: 18px 0;
+}
+
+.pico-billing-checklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 20px 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 640px) {
+  .pico-billing-checklist {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pico-billing-cta {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #18181b 0%, #09090b 100%);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid #09090b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow:
+    0 2px 6px rgba(9, 9, 11, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform 180ms var(--pico-spring), background-color 160ms ease;
+}
+
+.pico-billing-cta:hover:not(:disabled) {
+  background: linear-gradient(180deg, #27272a 0%, #18181b 100%);
+  transform: translateY(-1px);
+}
+
+/* Partner Revenue Suite Footer */
+.pico-partner-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+@media (max-width: 1024px) {
+  .pico-partner-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .pico-partner-grid {
+    grid-template-columns: 1fr;
+  }
+}

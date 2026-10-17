@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "remix",
+  "installCommand": "npm install",
+  "buildCommand": "npm run vercel-build",
+  "regions": ["iad1"],
+  "headers": [
+    {
+      "source": "/proxy/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, s-maxage=900, stale-while-revalidate=3600" }]
+    }
+  ]
+}

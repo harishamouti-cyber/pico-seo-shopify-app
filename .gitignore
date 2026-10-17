@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+/build/
+/public/build/
+/.cache/
+/.vercel/
+extensions/*/dist/
+
+# Environment & secrets — never commit these
+.env
+.env.*
+!.env.example
+.shopify/
+shopify.app.*.toml
+!shopify.app.toml
+
+# Local databases
+prisma/*.sqlite
+prisma/*.sqlite-journal
+*.db
+
+# Logs & OS noise
+*.log
+npm-debug.log*
+.DS_Store
+.idea/
+.vscode/
+*.tsbuildinfo

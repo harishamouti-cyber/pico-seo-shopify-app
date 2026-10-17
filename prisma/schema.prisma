@@ -1,0 +1,76 @@
+// PicoSEO data model
+// PostgreSQL is used so the app runs on Vercel serverless with a free-tier
+// managed Postgres (Neon, Supabase, Vercel Postgres) — zero server cost.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Required by @shopify/shopify-app-session-storage-prisma (OAuth sessions).
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  INACTIVE
+}
+
+model PicoSeoSettings {
+  id                      String             @id @default(cuid())
+  shop                    String             @unique
+  storeDisplayName        String             @default("Your Store")
+  subscriptionStatus      SubscriptionStatus @default(INACTIVE)
+  autoSyncOnProductUpdate Boolean            @default(false)
+  metaTitleTemplate       String             @default("{{product_title}} | Official {{store_name}}")
+  metaDescriptionTemplate String             @default("Shop {{product_title}} ({{variant_title}}) for {{price}} at {{store_name}}. Fast shipping and verified quality.")
+  imageAltTemplate        String             @default("{{product_title}} - {{variant_title}} by {{store_name}}")
+  enableJsonLdSchema      Boolean            @default(true)
+  enableLcpImagePreload   Boolean            @default(true)
+  enableLlmsTxtFeed       Boolean            @default(true)
+  enableIndexNowPing      Boolean            @default(true)
+  indexNowApiKey          String?
+  totalProductsOptimized  Int                @default(0)
+  totalAltTextsFixed      Int                @default(0)
+  totalIndexNowPings      Int                @default(0)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+}
+
+model ProductOptimizationLog {
+  id                   String   @id @default(cuid())
+  shop                 String
+  productId            String
+  productTitle         String
+  productImageUrl      String?
+  seoScoreBefore       Int
+  seoScoreAfter        Int
+  altTextsUpdatedCount Int      @default(0)
+  metaUpdated          Boolean  @default(false)
+  indexNowPinged       Boolean  @default(false)
+  updatedAt            DateTime @default(now()) @updatedAt
+
+  @@index([shop, updatedAt])
+  @@index([shop, productId])
+}
