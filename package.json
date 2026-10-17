@@ -13,10 +13,13 @@
     "deploy": "shopify app deploy",
     "env": "shopify app env",
     "start": "remix-serve ./build/server/index.js",
-    "setup": "prisma generate && prisma db push",
+    "setup": "prisma generate && prisma migrate deploy",
+    "db:deploy": "prisma migrate deploy",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:database": "vitest run --config vitest.database.config.ts",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && remix vite:build",
+    "vercel-build": "prisma generate && prisma migrate deploy && remix vite:build",
     "shopify": "shopify",
     "prisma": "prisma"
   },
@@ -47,7 +50,8 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "typescript": "^5.7.2",
-    "vite": "^5.4.19"
+    "vite": "^5.4.19",
+    "vitest": "^3.2.7"
   },
   "overrides": {
     "@remix-run/server-runtime": "2.16.7"

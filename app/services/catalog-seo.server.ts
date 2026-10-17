@@ -19,6 +19,7 @@ import type {
   StoreContext,
 } from "../lib/types";
 import { type AdminClient, formatUserErrors, gql, type UserError } from "./graphql.server";
+import { pingIndexNow } from "./indexnow.server";
 import { defaultSettings, fetchShopInfo, getOrCreateSettings, toStoreContext } from "./settings.server";
 
 interface RawImageNode {
@@ -378,11 +379,12 @@ export async function fetchCatalogAudit(
   try {
     settings = await getOrCreateSettings(shop, admin);
   } catch (err) {
+    if (err instanceof Response) throw err;
     console.warn("[PicoSEO] getOrCreateSettings fallback:", err);
     settings = defaultSettings(shop);
   }
 
-  let shopInfo = {
+  let shopInfo: Awaited<ReturnType<typeof fetchShopInfo>> = {
     name: shop.replace(/\.myshopify\.com$/i, ""),
     myshopifyDomain: shop,
     currencyCode: "USD",
@@ -392,17 +394,13 @@ export async function fetchCatalogAudit(
     const fetched = await fetchShopInfo(admin);
     if (fetched) shopInfo = fetched;
   } catch (err) {
+    if (err instanceof Response) throw err;
     console.warn("[PicoSEO] fetchShopInfo fallback:", err);
   }
 
-  let rawNodes: RawProductNode[] = [];
-  try {
-    const catalogData = await gql<CatalogQueryData>(admin, CATALOG_PRODUCTS_QUERY, { first });
-    rawNodes = catalogData?.products?.nodes ?? [];
-  } catch (err) {
-    console.warn("[PicoSEO] catalog products query fallback:", err);
-    rawNodes = [];
-  }
+  // A failed audit is not an empty catalog with a perfect score.
+  const catalogData = await gql<CatalogQueryData>(admin, CATALOG_PRODUCTS_QUERY, { first });
+  const rawNodes = catalogData.products.nodes;
 
   let recentLogs: ProductOptimizationLog[] = [];
   try {
@@ -550,9 +548,10 @@ export async function optimizeSingleProduct(
     }>(admin, FILE_ALT_MUTATION, {
       files: filesToUpdate,
     });
-    if (!fileRes.fileUpdate.userErrors?.length) {
-      altTextsUpdatedCount = filesToUpdate.length;
+    if (fileRes.fileUpdate.userErrors?.length) {
+      throw new Error(formatUserErrors(fileRes.fileUpdate.userErrors));
     }
+    altTextsUpdatedCount = filesToUpdate.length;
   }
 
   // Compute updated score deterministically
@@ -616,6 +615,7 @@ export async function optimizeSingleProduct(
 
 export interface BulkOptimizeSummary {
   optimizedCount: number;
+  failedCount: number;
   altTextsFixed: number;
   indexNowPinged: boolean;
   averageScoreAfter: number;
@@ -624,8 +624,8 @@ export interface BulkOptimizeSummary {
 
 /**
  * 1-Click Bulk Optimizer: audits the catalog, fixes every product missing
- * SEO title, meta description, or descriptive media alt text, and submits a
- * single batched IndexNow ping for all updated URLs.
+ * SEO title, meta description, or descriptive media alt text in the loaded
+ * audit, and reports failed products separately from successful updates.
  */
 export async function optimizeCatalogBulk(
   admin: AdminClient,
@@ -637,18 +637,20 @@ export async function optimizeCatalogBulk(
     ? audit.products
     : audit.products.filter((p) => needsOptimization(p));
 
-  const listToProcess = targets.length > 0 ? targets : audit.products.slice(0, 10);
   const results: OptimizeProductResult[] = [];
+  let failedCount = 0;
   let altTextsFixed = 0;
 
-  for (const product of listToProcess) {
+  for (const product of targets) {
     try {
       const res = await optimizeSingleProduct(admin, shop, product.id, {
-        forceOverwrite: Boolean(options?.forceOverwriteAll) || !needsOptimization(product),
+        forceOverwrite: Boolean(options?.forceOverwriteAll),
       });
       results.push(res);
       altTextsFixed += res.altTextsUpdatedCount;
     } catch (error) {
+      if (error instanceof Response) throw error;
+      failedCount += 1;
       console.error(`[PicoSEO] Failed optimizing ${product.id}`, error);
     }
   }
@@ -660,6 +662,7 @@ export async function optimizeCatalogBulk(
 
   return {
     optimizedCount: results.length,
+    failedCount,
     altTextsFixed,
     indexNowPinged: results.some((r) => r.indexNowPinged),
     averageScoreAfter,

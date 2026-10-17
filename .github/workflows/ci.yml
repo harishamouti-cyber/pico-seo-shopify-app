@@ -1,0 +1,42 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: picoseo
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: picoseo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U picoseo -d picoseo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://picoseo:local-ci-only@localhost:5432/picoseo_test
+      DIRECT_URL: postgresql://picoseo:local-ci-only@localhost:5432/picoseo_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run setup
+      - run: npm run test:database
+      - run: VERCEL=1 npm run vercel-build
+      - run: npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code

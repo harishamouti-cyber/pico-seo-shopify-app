@@ -26,6 +26,7 @@ const shopify = shopifyApp({
         const settings = await getOrCreateSettings(session.shop, admin);
         await ensureStoreInfrastructure(admin, settings);
       } catch (error) {
+        if (error instanceof Response) throw error;
         console.error("[PicoSEO] afterAuth bootstrap failed", error);
       }
     },

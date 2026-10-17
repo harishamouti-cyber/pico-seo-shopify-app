@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Link, useFetcher, useLoaderData } from "@remix-run/react";
+import { Link, useFetcher, useLoaderData, useRevalidator } from "@remix-run/react";
 import { TitleBar } from "@shopify/app-bridge-react";
 import {
   LiveStatusDot,
@@ -21,6 +21,7 @@ import {
   SparklesIcon,
 } from "../components/icons";
 import { needsOptimization } from "../lib/seo-score";
+import { buildAuditCsv } from "../lib/audit-csv";
 import { formatPrice } from "../lib/seo-template";
 import {
   fetchCatalogAudit,
@@ -73,15 +74,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         forceOverwriteAll,
       });
       return json({
-        ok: true,
+        ok: summary.failedCount === 0,
         intent,
-        message: `Optimized ${summary.optimizedCount} product(s), repaired ${summary.altTextsFixed} alt text(s), average score ${summary.averageScoreAfter}/100.`,
+        message: `Optimized ${summary.optimizedCount} product(s), repaired ${summary.altTextsFixed} alt text(s), average score ${summary.averageScoreAfter}/100.${summary.failedCount ? ` ${summary.failedCount} product(s) failed; refresh the audit before retrying.` : ""}`,
         summary,
       });
     }
 
     return json({ ok: false, message: "Unknown action intent." }, { status: 400 });
   } catch (error) {
+    if (error instanceof Response) throw error;
     return json(
       {
         ok: false,
@@ -100,6 +102,7 @@ export default function SeoOverviewRoute() {
   const { audit, themeEmbed } = useLoaderData<typeof loader>();
   const bulkFetcher = useFetcher<typeof action>();
   const rowFetcher = useFetcher<typeof action>();
+  const revalidator = useRevalidator();
 
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
@@ -168,7 +171,7 @@ export default function SeoOverviewRoute() {
       if (filterTab === "needs_fix" && !needsOptimization(product)) return false;
       if (filterTab === "optimized" && product.audit.score < 80) return false;
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.trim().toLowerCase();
         return (
           product.title.toLowerCase().includes(q) ||
           product.handle.toLowerCase().includes(q) ||
@@ -179,6 +182,17 @@ export default function SeoOverviewRoute() {
       return true;
     });
   }, [audit.products, filterTab, searchQuery]);
+
+  const exportAudit = () => {
+    const url = URL.createObjectURL(new Blob(["\uFEFF", buildAuditCsv(filteredProducts)], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "picoseo-audit.csv";
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  };
 
   const feedbackBanner =
     (bulkFetcher.data && "message" in bulkFetcher.data && bulkFetcher.data) ||
@@ -698,8 +712,8 @@ export default function SeoOverviewRoute() {
                 color: "#64748b",
               }}
             >
-              Unfiltered catalog traversal across active, draft, and unindexed
-              products with 300px proportional thumbnails.
+              Auditing up to 50 recently updated products across all statuses.
+              Search and export apply to these loaded products.
             </p>
           </div>
 
@@ -711,6 +725,22 @@ export default function SeoOverviewRoute() {
               gap: 10,
             }}
           >
+            <button
+              type="button"
+              className="pico-btn pico-btn--secondary"
+              onClick={() => revalidator.revalidate()}
+              disabled={revalidator.state !== "idle" || bulkFetcher.state !== "idle" || rowFetcher.state !== "idle"}
+            >
+              {revalidator.state !== "idle" ? "Refreshing…" : "Refresh audit"}
+            </button>
+            <button
+              type="button"
+              className="pico-btn pico-btn--secondary"
+              onClick={exportAudit}
+              disabled={filteredProducts.length === 0}
+            >
+              Export shown ({filteredProducts.length})
+            </button>
             <SpringSegmentedControl<FilterTab>
               ariaLabel="Filter products"
               value={filterTab}
@@ -733,6 +763,7 @@ export default function SeoOverviewRoute() {
 
             <input
               type="search"
+              aria-label="Search audited products"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search title, vendor, type…"

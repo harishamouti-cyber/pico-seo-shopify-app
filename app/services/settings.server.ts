@@ -40,7 +40,7 @@ export function defaultSettings(shop: string, storeDisplayName?: string): PicoSe
     id: `settings_${shop}`,
     shop,
     storeDisplayName: sanitizeStoreName(storeDisplayName || shop),
-    subscriptionStatus: "ACTIVE",
+    subscriptionStatus: "INACTIVE",
     autoSyncOnProductUpdate: false,
     metaTitleTemplate: "{{product_title}} | Official {{store_name}}",
     metaDescriptionTemplate:
@@ -50,7 +50,7 @@ export function defaultSettings(shop: string, storeDisplayName?: string): PicoSe
     enableLcpImagePreload: true,
     enableLlmsTxtFeed: true,
     enableIndexNowPing: true,
-    indexNowApiKey: "picoseo_active_key",
+    indexNowApiKey: null,
     totalProductsOptimized: 0,
     totalAltTextsFixed: 0,
     totalIndexNowPings: 0,
@@ -77,7 +77,8 @@ export async function getOrCreateSettings(shop: string, admin?: AdminClient): Pr
     if (admin) {
       try {
         rawName = (await fetchShopInfo(admin)).name || shop;
-      } catch {
+      } catch (error) {
+        if (error instanceof Response) throw error;
         /* fall back to the domain handle */
       }
     }
@@ -92,6 +93,7 @@ export async function getOrCreateSettings(shop: string, admin?: AdminClient): Pr
       },
     });
   } catch (error) {
+    if (error instanceof Response) throw error;
     console.warn("[PicoSEO] getOrCreateSettings database fallback:", error);
     return defaultSettings(shop);
   }
@@ -152,10 +154,15 @@ export async function ensureStoreRedirects(admin: AdminClient, settings: PicoSeo
     redirects.push({ path: `/${settings.indexNowApiKey}.txt`, target: `${PROXY_PREFIX}/indexnow-key.txt` });
   }
   await Promise.all(
-    redirects.map((urlRedirect) => gql(admin, REDIRECT_CREATE, { urlRedirect }).catch(() => undefined)),
+    redirects.map((urlRedirect) => gql(admin, REDIRECT_CREATE, { urlRedirect }).catch((error) => {
+      if (error instanceof Response) throw error;
+    })),
   );
 }
 
 export async function ensureStoreInfrastructure(admin: AdminClient, settings: PicoSeoSettings) {
-  await Promise.allSettled([syncThemeConfig(admin, settings), ensureStoreRedirects(admin, settings)]);
+  const results = await Promise.allSettled([syncThemeConfig(admin, settings), ensureStoreRedirects(admin, settings)]);
+  for (const result of results) {
+    if (result.status === "rejected" && result.reason instanceof Response) throw result.reason;
+  }
 }

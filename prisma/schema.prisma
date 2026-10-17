@@ -1,6 +1,5 @@
 // PicoSEO data model
-// Zero-server-cost SQLite datasource compatible with both local dev
-// (`file:./dev.sqlite`) and Vercel serverless (`file:/tmp/dev.sqlite`).
+// Shared PostgreSQL storage for local development and production.
 
 generator client {
   provider      = "prisma-client-js"
@@ -8,8 +7,15 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  INACTIVE
 }
 
 // Required by @shopify/shopify-app-session-storage-prisma (OAuth sessions).
@@ -35,7 +41,7 @@ model PicoSeoSettings {
   id                      String   @id @default(cuid())
   shop                    String   @unique
   storeDisplayName        String   @default("Your Store")
-  subscriptionStatus      String   @default("INACTIVE") // ACTIVE, TRIAL, INACTIVE
+  subscriptionStatus      SubscriptionStatus @default(INACTIVE)
   autoSyncOnProductUpdate Boolean  @default(false)
   metaTitleTemplate       String   @default("{{product_title}} | Official {{store_name}}")
   metaDescriptionTemplate String   @default("Shop {{product_title}} ({{variant_title}}) for {{price}} at {{store_name}}. Fast shipping and verified quality.")

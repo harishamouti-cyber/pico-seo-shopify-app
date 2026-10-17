@@ -76,6 +76,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       message: "Redirecting to Shopify secure billing confirmation…",
     });
   } catch (error) {
+    if (error instanceof Response) throw error;
     return json(
       {
         ok: false,

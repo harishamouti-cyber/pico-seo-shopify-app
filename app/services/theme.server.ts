@@ -38,7 +38,8 @@ export async function getThemeEmbedInfo(
       themeId: main?.id || null,
       deepLinkUrl,
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof Response) throw error;
     return {
       themeName: "Active storefront theme",
       themeId: null,

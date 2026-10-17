@@ -132,6 +132,7 @@ export async function syncSubscriptionStatus(
 
     return { status, activeSubscription: activeSub };
   } catch (error) {
+    if (error instanceof Response) throw error;
     console.error("[PicoSEO] Failed syncing subscription status", error);
     const settings = await prisma.picoSeoSettings.findUnique({ where: { shop } });
     return {

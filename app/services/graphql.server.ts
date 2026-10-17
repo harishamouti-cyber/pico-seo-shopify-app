@@ -22,6 +22,9 @@ export async function gql<T>(admin: AdminClient, query: string, variables?: Reco
   try {
     response = await admin.graphql(query, variables ? { variables } : undefined);
   } catch (error) {
+    // Shopify uses thrown Responses for token refresh and App Bridge redirects.
+    // Remix must receive the original status, body, and authentication headers.
+    if (error instanceof Response) throw error;
     // shopify-app-remix throws GraphqlQueryError with a `body` payload.
     const body = (error as { body?: { errors?: unknown } })?.body;
     throw new ShopifyGraphqlError(
@@ -29,8 +32,11 @@ export async function gql<T>(admin: AdminClient, query: string, variables?: Reco
       body?.errors ?? error,
     );
   }
+  if (response.status === 401 || (response.status >= 300 && response.status < 400)) {
+    throw response;
+  }
   const body = (await response.json()) as { data?: T; errors?: Array<{ message: string }> };
-  if (!body.data) {
+  if (!response.ok || body.errors?.length || !body.data) {
     throw new ShopifyGraphqlError(body.errors?.map((e) => e.message).join("; ") || "Empty GraphQL response", body.errors);
   }
   return body.data;
