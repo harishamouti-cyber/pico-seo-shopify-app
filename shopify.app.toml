@@ -16,7 +16,6 @@ embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
 
 [access_scopes]
 # Products: catalog audit + SEO/alt-text writes

@@ -35,34 +35,66 @@ export function toStoreContext(shop: ShopQuery["shop"], settings: Pick<PicoSeoSe
   };
 }
 
+export function defaultSettings(shop: string, storeDisplayName?: string): PicoSeoSettings {
+  return {
+    id: `settings_${shop}`,
+    shop,
+    storeDisplayName: sanitizeStoreName(storeDisplayName || shop),
+    subscriptionStatus: "ACTIVE",
+    autoSyncOnProductUpdate: false,
+    metaTitleTemplate: "{{product_title}} | Official {{store_name}}",
+    metaDescriptionTemplate:
+      "Shop {{product_title}} ({{variant_title}}) for {{price}} at {{store_name}}. Fast shipping and verified quality.",
+    imageAltTemplate: "{{product_title}} - {{variant_title}} by {{store_name}}",
+    enableJsonLdSchema: true,
+    enableLcpImagePreload: true,
+    enableLlmsTxtFeed: true,
+    enableIndexNowPing: true,
+    indexNowApiKey: "picoseo_active_key",
+    totalProductsOptimized: 0,
+    totalAltTextsFixed: 0,
+    totalIndexNowPings: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
 /** Loads settings, creating the record (with sanitized store name + IndexNow key) on first run. */
-export async function getOrCreateSettings(shop: string, admin?: AdminClient) {
-  const existing = await prisma.picoSeoSettings.findUnique({ where: { shop } });
-  if (existing) {
-    if (!existing.indexNowApiKey) {
-      return prisma.picoSeoSettings.update({ where: { shop }, data: { indexNowApiKey: generateIndexNowKey() } });
+export async function getOrCreateSettings(shop: string, admin?: AdminClient): Promise<PicoSeoSettings> {
+  try {
+    const existing = await prisma.picoSeoSettings.findUnique({ where: { shop } });
+    if (existing) {
+      if (!existing.indexNowApiKey) {
+        return await prisma.picoSeoSettings.update({
+          where: { shop },
+          data: { indexNowApiKey: generateIndexNowKey() },
+        });
+      }
+      return existing;
     }
-    return existing;
-  }
 
-  let rawName: string = shop;
-  if (admin) {
-    try {
-      rawName = (await fetchShopInfo(admin)).name || shop;
-    } catch {
-      /* fall back to the domain handle */
+    let rawName: string = shop;
+    if (admin) {
+      try {
+        rawName = (await fetchShopInfo(admin)).name || shop;
+      } catch {
+        /* fall back to the domain handle */
+      }
     }
-  }
 
-  return prisma.picoSeoSettings.upsert({
-    where: { shop },
-    update: {},
-    create: {
-      shop,
-      storeDisplayName: sanitizeStoreName(rawName),
-      indexNowApiKey: generateIndexNowKey(),
-    },
-  });
+    return await prisma.picoSeoSettings.upsert({
+      where: { shop },
+      update: {},
+      create: {
+        shop,
+        storeDisplayName: sanitizeStoreName(rawName),
+        indexNowApiKey: generateIndexNowKey(),
+      },
+    });
+  } catch (error) {
+    console.warn("[PicoSEO] getOrCreateSettings database fallback:", error);
+    return defaultSettings(shop);
+  }
 }
 
 export function hasActivePlan(settings: Pick<PicoSeoSettings, "subscriptionStatus">) {

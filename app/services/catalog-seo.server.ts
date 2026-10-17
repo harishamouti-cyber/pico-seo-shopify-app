@@ -19,8 +19,7 @@ import type {
   StoreContext,
 } from "../lib/types";
 import { type AdminClient, formatUserErrors, gql, type UserError } from "./graphql.server";
-import { pingIndexNow } from "./indexnow.server";
-import { fetchShopInfo, getOrCreateSettings, toStoreContext } from "./settings.server";
+import { defaultSettings, fetchShopInfo, getOrCreateSettings, toStoreContext } from "./settings.server";
 
 interface RawImageNode {
   url: string;
@@ -375,19 +374,50 @@ export async function fetchCatalogAudit(
   shop: string,
   first = 50,
 ): Promise<CatalogAuditSummary> {
-  const [settings, shopInfo, catalogData, recentLogs] = await Promise.all([
-    getOrCreateSettings(shop, admin),
-    fetchShopInfo(admin),
-    gql<CatalogQueryData>(admin, CATALOG_PRODUCTS_QUERY, { first }),
-    prisma.productOptimizationLog.findMany({
+  let settings: PicoSeoSettings;
+  try {
+    settings = await getOrCreateSettings(shop, admin);
+  } catch (err) {
+    console.warn("[PicoSEO] getOrCreateSettings fallback:", err);
+    settings = defaultSettings(shop);
+  }
+
+  let shopInfo = {
+    name: shop.replace(/\.myshopify\.com$/i, ""),
+    myshopifyDomain: shop,
+    currencyCode: "USD",
+    primaryDomain: null,
+  };
+  try {
+    const fetched = await fetchShopInfo(admin);
+    if (fetched) shopInfo = fetched;
+  } catch (err) {
+    console.warn("[PicoSEO] fetchShopInfo fallback:", err);
+  }
+
+  let rawNodes: RawProductNode[] = [];
+  try {
+    const catalogData = await gql<CatalogQueryData>(admin, CATALOG_PRODUCTS_QUERY, { first });
+    rawNodes = catalogData?.products?.nodes ?? [];
+  } catch (err) {
+    console.warn("[PicoSEO] catalog products query fallback:", err);
+    rawNodes = [];
+  }
+
+  let recentLogs: ProductOptimizationLog[] = [];
+  try {
+    recentLogs = await prisma.productOptimizationLog.findMany({
       where: { shop },
       orderBy: { updatedAt: "desc" },
       take: 12,
-    }),
-  ]);
+    });
+  } catch (err) {
+    console.warn("[PicoSEO] optimization logs query fallback:", err);
+    recentLogs = [];
+  }
 
   const store = toStoreContext(shopInfo, settings);
-  const products: AuditedProduct[] = (catalogData.products.nodes ?? []).map((node) => {
+  const products: AuditedProduct[] = rawNodes.map((node) => {
     const product = normalizeProduct(node);
     const audit = computeSeoScore(product);
     return { ...product, audit };

@@ -6,7 +6,15 @@ import { login } from "../../shopify.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
 
-  if (url.searchParams.get("shop")) {
+  const hasEmbeddedParam =
+    url.searchParams.has("shop") ||
+    url.searchParams.has("host") ||
+    url.searchParams.has("embedded") ||
+    url.searchParams.has("id_token") ||
+    url.searchParams.has("session") ||
+    url.searchParams.has("hmac");
+
+  if (hasEmbeddedParam) {
     throw redirect(`/app?${url.searchParams.toString()}`);
   }
 
