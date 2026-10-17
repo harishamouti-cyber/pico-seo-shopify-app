@@ -8,7 +8,7 @@
 # `npm run config:link`), and replace the Vercel domain below with your
 # production deployment URL.
 
-client_id = "REPLACE_WITH_SHOPIFY_CLIENT_ID"
+client_id = "931b1cd15cc0a689d608369e758f31a1"
 name = "PicoSEO"
 handle = "picoseo"
 application_url = "https://pico-seo-shopify-app.vercel.app"
