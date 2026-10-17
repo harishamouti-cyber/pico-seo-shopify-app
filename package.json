@@ -13,10 +13,10 @@
     "deploy": "shopify app deploy",
     "env": "shopify app env",
     "start": "remix-serve ./build/server/index.js",
-    "setup": "prisma generate && prisma migrate deploy",
+    "setup": "prisma generate && prisma db push",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma migrate deploy && remix vite:build",
+    "vercel-build": "prisma generate && remix vite:build",
     "shopify": "shopify",
     "prisma": "prisma"
   },

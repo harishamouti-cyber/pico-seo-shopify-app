@@ -1,6 +1,6 @@
 // PicoSEO data model
-// PostgreSQL is used so the app runs on Vercel serverless with a free-tier
-// managed Postgres (Neon, Supabase, Vercel Postgres) — zero server cost.
+// Zero-server-cost SQLite datasource compatible with both local dev
+// (`file:./dev.sqlite`) and Vercel serverless (`file:/tmp/dev.sqlite`).
 
 generator client {
   provider      = "prisma-client-js"
@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -31,31 +31,25 @@ model Session {
   emailVerified Boolean?  @default(false)
 }
 
-enum SubscriptionStatus {
-  ACTIVE
-  TRIAL
-  INACTIVE
-}
-
 model PicoSeoSettings {
-  id                      String             @id @default(cuid())
-  shop                    String             @unique
-  storeDisplayName        String             @default("Your Store")
-  subscriptionStatus      SubscriptionStatus @default(INACTIVE)
-  autoSyncOnProductUpdate Boolean            @default(false)
-  metaTitleTemplate       String             @default("{{product_title}} | Official {{store_name}}")
-  metaDescriptionTemplate String             @default("Shop {{product_title}} ({{variant_title}}) for {{price}} at {{store_name}}. Fast shipping and verified quality.")
-  imageAltTemplate        String             @default("{{product_title}} - {{variant_title}} by {{store_name}}")
-  enableJsonLdSchema      Boolean            @default(true)
-  enableLcpImagePreload   Boolean            @default(true)
-  enableLlmsTxtFeed       Boolean            @default(true)
-  enableIndexNowPing      Boolean            @default(true)
+  id                      String   @id @default(cuid())
+  shop                    String   @unique
+  storeDisplayName        String   @default("Your Store")
+  subscriptionStatus      String   @default("INACTIVE") // ACTIVE, TRIAL, INACTIVE
+  autoSyncOnProductUpdate Boolean  @default(false)
+  metaTitleTemplate       String   @default("{{product_title}} | Official {{store_name}}")
+  metaDescriptionTemplate String   @default("Shop {{product_title}} ({{variant_title}}) for {{price}} at {{store_name}}. Fast shipping and verified quality.")
+  imageAltTemplate        String   @default("{{product_title}} - {{variant_title}} by {{store_name}}")
+  enableJsonLdSchema      Boolean  @default(true)
+  enableLcpImagePreload   Boolean  @default(true)
+  enableLlmsTxtFeed       Boolean  @default(true)
+  enableIndexNowPing      Boolean  @default(true)
   indexNowApiKey          String?
-  totalProductsOptimized  Int                @default(0)
-  totalAltTextsFixed      Int                @default(0)
-  totalIndexNowPings      Int                @default(0)
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
+  totalProductsOptimized  Int      @default(0)
+  totalAltTextsFixed      Int      @default(0)
+  totalIndexNowPings      Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 }
 
 model ProductOptimizationLog {

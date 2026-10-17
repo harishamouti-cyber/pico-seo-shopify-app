@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from "@prisma/client";
+export type SubscriptionStatus = "ACTIVE" | "TRIAL" | "INACTIVE";
 import prisma from "../db.server";
 import { type AdminClient, formatUserErrors, gql, type UserError } from "./graphql.server";
 
