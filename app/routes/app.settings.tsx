@@ -11,16 +11,14 @@ import {
 import {
   BotCitationIcon,
   CheckCircleIcon,
-  CopyIcon,
   DesktopBezelIcon,
-  FileMarkdownIcon,
+  ExternalArrowIcon,
   GlobeSearchIcon,
   MobileBezelIcon,
   PlusChipIcon,
   SparklesIcon,
 } from "../components/icons";
 import prisma from "../db.server";
-import { buildLlmsDocument, toLlmsProduct } from "../lib/llms";
 import {
   DEFAULT_TEMPLATES,
   formatPrice,
@@ -29,9 +27,8 @@ import {
   META_DESCRIPTION_MAX,
   META_TITLE_MAX,
   productUrl,
-  TEMPLATE_TOKENS,
 } from "../lib/seo-template";
-import { sanitizeStoreName } from "../lib/store-name";
+import { formatStoreDomain, sanitizeStoreName } from "../lib/store-name";
 import type { PicoProduct } from "../lib/types";
 import { fetchCatalogAudit } from "../services/catalog-seo.server";
 import { generateIndexNowKey } from "../services/indexnow.server";
@@ -57,7 +54,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     await ensureStoreInfrastructure(admin, updated);
     return json({
       ok: true,
-      message: "Generated a fresh IndexNow verification key and updated store redirects.",
+      message: "Updated your instant search engine connection.",
     });
   }
 
@@ -98,8 +95,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   return json({
     ok: true,
-    message:
-      "Saved templates, automation toggles, and synced Zero-JS theme configuration.",
+    message: "Your Auto-SEO rules and storefront boosters have been saved.",
   });
 };
 
@@ -108,7 +104,7 @@ type TemplateFieldKey =
   | "metaDescriptionTemplate"
   | "imageAltTemplate";
 
-type PreviewViewMode = "google" | "ai" | "llms";
+type PreviewViewMode = "google" | "ai";
 type BezelMode = "desktop" | "mobile";
 
 const FALLBACK_SAMPLE_PRODUCT: PicoProduct = {
@@ -120,7 +116,7 @@ const FALLBACK_SAMPLE_PRODUCT: PicoProduct = {
   productType: "Snowboard",
   tags: ["Winter", "Snow", "All-Mountain"],
   description:
-    "Engineered for all-mountain precision with a sintered carbon base, responsive flex profile, and zero-chatter edge control.",
+    "Engineered for all-mountain precision with a sintered carbon base, responsive flex profile, and effortless edge control.",
   onlineStoreUrl: null,
   totalInventory: 24,
   seoTitle: null,
@@ -144,11 +140,11 @@ const FALLBACK_SAMPLE_PRODUCT: PicoProduct = {
 };
 
 const VARIABLE_CHIPS = [
-  { token: "{{product_title}}", label: "+ Product Title" },
+  { token: "{{product_title}}", label: "+ Product Name" },
   { token: "{{variant_title}}", label: "+ Variant" },
   { token: "{{price}}", label: "+ Price" },
   { token: "{{store_name}}", label: "+ Store Name" },
-  { token: "{{product_type}}", label: "+ Product Type" },
+  { token: "{{product_type}}", label: "+ Category" },
 ] as const;
 
 export default function SettingsStudioRoute() {
@@ -158,7 +154,7 @@ export default function SettingsStudioRoute() {
   const isSaving = navigation.state === "submitting";
 
   const [storeDisplayName, setStoreDisplayName] = useState(
-    audit.settings.storeDisplayName,
+    audit.store.storeName,
   );
   const [metaTitleTemplate, setMetaTitleTemplate] = useState(
     audit.settings.metaTitleTemplate,
@@ -199,7 +195,6 @@ export default function SettingsStudioRoute() {
   );
   const [previewMode, setPreviewMode] = useState<PreviewViewMode>("google");
   const [bezelMode, setBezelMode] = useState<BezelMode>("desktop");
-  const [copiedKey, setCopiedKey] = useState(false);
 
   const selectedProduct = useMemo(
     () =>
@@ -208,13 +203,16 @@ export default function SettingsStudioRoute() {
     [catalogProducts, selectedProductId],
   );
 
-  const liveStoreContext = useMemo(
-    () => ({
+  const liveStoreContext = useMemo(() => {
+    const cleanName = sanitizeStoreName(
+      storeDisplayName.trim() || audit.store.storeName,
+    );
+    return {
       ...audit.store,
-      storeName: storeDisplayName.trim() || audit.store.storeName,
-    }),
-    [audit.store, storeDisplayName],
-  );
+      storeName: cleanName,
+      host: formatStoreDomain(audit.store.host, cleanName),
+    };
+  }, [audit.store, storeDisplayName]);
 
   const liveMeta = useMemo(
     () =>
@@ -252,13 +250,6 @@ export default function SettingsStudioRoute() {
     imageAltTemplate,
     metaDescriptionTemplate,
   ]);
-
-  const liveLlmsFeed = useMemo(() => {
-    const items = catalogProducts
-      .slice(0, 12)
-      .map((p) => toLlmsProduct(p, liveStoreContext));
-    return buildLlmsDocument(liveStoreContext, items);
-  }, [catalogProducts, liveStoreContext]);
 
   const insertTokenIntoField = (
     token: string,
@@ -304,16 +295,6 @@ export default function SettingsStudioRoute() {
     setActiveField(targetField);
   };
 
-  const handleCopy = (text: string) => {
-    try {
-      navigator.clipboard.writeText(text);
-      setCopiedKey(true);
-      setTimeout(() => setCopiedKey(false), 1800);
-    } catch {
-      // ignore
-    }
-  };
-
   const resolvedUrl = productUrl(selectedProduct, liveStoreContext);
   const priceFormatted = formatPrice(
     selectedProduct.minPrice,
@@ -323,7 +304,7 @@ export default function SettingsStudioRoute() {
 
   return (
     <div className="pico-shell">
-      <TitleBar title="Templates" />
+      <TitleBar title="Auto-SEO Rules" />
 
       {actionData?.message && (
         <div
@@ -356,15 +337,19 @@ export default function SettingsStudioRoute() {
       )}
 
       <div className="pico-split-layout">
-        {/* LEFT COLUMN: Smart Metadata & Alt-Text Templates + Engine Toggles */}
-        <Form method="post" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* LEFT COLUMN: Automatic Google & Photo Text Rules + 1-Click Storefront Boosters */}
+        <Form
+          method="post"
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}
+        >
           <input type="hidden" name="intent" value="save_settings" />
 
-          {/* Smart Metadata & Alt-Text Templates Card */}
+          {/* Card 1: Automatic Google & Photo Text Rules */}
           <section className="pico-bento-card">
             <div
               style={{
                 display: "flex",
+                flexWrap: "wrap",
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 10,
@@ -380,7 +365,7 @@ export default function SettingsStudioRoute() {
                     color: "#0f172a",
                   }}
                 >
-                  Smart metadata & alt-text templates
+                  Automatic Google &amp; Photo Text Rules
                 </h2>
                 <p
                   style={{
@@ -389,40 +374,39 @@ export default function SettingsStudioRoute() {
                     color: "#64748b",
                   }}
                 >
-                  Click any variable chip to insert it directly into the active
-                  template input.
+                  Set the pattern PicoSEO uses to write your product titles,
+                  search descriptions, and photo descriptions.
                 </p>
               </div>
               <span className="pico-pill pico-pill--blue">
-                Active field:{" "}
+                Editing:{" "}
                 {activeField === "metaTitleTemplate"
-                  ? "SEO Title"
+                  ? "Google Search Title"
                   : activeField === "metaDescriptionTemplate"
-                    ? "Meta Description"
-                    : "Image Alt"}
+                    ? "Google Search Description"
+                    : "Product Photo Description"}
               </span>
             </div>
 
-            {/* Global Clickable Dynamic Variable Chips Bar */}
+            {/* Single Clean Row of Clickable Tag Pills */}
             <div
               style={{
-                padding: "10px 12px",
+                padding: "12px 14px",
                 borderRadius: 12,
                 background: "#f8fafc",
                 border: "1px solid #e2e8f0",
-                marginBottom: 16,
+                marginBottom: 18,
               }}
             >
               <div
                 style={{
-                  fontSize: 11.5,
+                  fontSize: 12,
                   fontWeight: 600,
-                  color: "#475569",
-                  marginBottom: 6,
+                  color: "#334155",
+                  marginBottom: 8,
                 }}
               >
-                Insert dynamic token into active input ({TEMPLATE_TOKENS.length}{" "}
-                available):
+                Click any tag to insert into your text:
               </div>
               <div className="pico-chip-row" style={{ marginTop: 0 }}>
                 {VARIABLE_CHIPS.map((chip) => (
@@ -439,23 +423,19 @@ export default function SettingsStudioRoute() {
               </div>
             </div>
 
-            {/* Store Display Name */}
+            {/* Your Store or Brand Name */}
             <div style={{ marginBottom: 16 }}>
               <label
                 htmlFor="storeDisplayName"
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
+                  display: "block",
                   fontSize: 13,
                   fontWeight: 600,
                   color: "#0f172a",
                   marginBottom: 6,
                 }}
               >
-                <span>Sanitized Brand / Store Display Name</span>
-                <span style={{ fontSize: 11.5, color: "#64748b", fontWeight: 500 }}>
-                  Resolves {"{{store_name}}"}
-                </span>
+                Your Store or Brand Name
               </label>
               <input
                 id="storeDisplayName"
@@ -467,7 +447,7 @@ export default function SettingsStudioRoute() {
               />
             </div>
 
-            {/* Meta Title Template */}
+            {/* Google Search Title */}
             <div style={{ marginBottom: 16 }}>
               <label
                 htmlFor="metaTitleTemplate"
@@ -480,12 +460,13 @@ export default function SettingsStudioRoute() {
                   marginBottom: 6,
                 }}
               >
-                <span>SEO Meta Title Template</span>
+                <span>Google Search Title</span>
                 <span
                   className="pico-tabular"
-                  style={{ fontSize: 11.5, color: "#64748b", fontWeight: 500 }}
+                  style={{ fontSize: 11.5, color: "#047857", fontWeight: 600 }}
                 >
-                  Resolved: {liveMeta.title.length} / {META_TITLE_MAX} chars
+                  Length: {liveMeta.title.length} / {META_TITLE_MAX} characters
+                  (Ideal)
                 </span>
               </label>
               <input
@@ -498,23 +479,9 @@ export default function SettingsStudioRoute() {
                 onChange={(e) => setMetaTitleTemplate(e.target.value)}
                 className="pico-input"
               />
-              <div className="pico-chip-row">
-                {VARIABLE_CHIPS.map((chip) => (
-                  <button
-                    key={chip.token}
-                    type="button"
-                    onClick={() =>
-                      insertTokenIntoField(chip.token, "metaTitleTemplate")
-                    }
-                    className="pico-token-chip"
-                  >
-                    <span>{chip.label}</span>
-                  </button>
-                ))}
-              </div>
             </div>
 
-            {/* Meta Description Template */}
+            {/* Google Search Description */}
             <div style={{ marginBottom: 16 }}>
               <label
                 htmlFor="metaDescriptionTemplate"
@@ -527,13 +494,13 @@ export default function SettingsStudioRoute() {
                   marginBottom: 6,
                 }}
               >
-                <span>SEO Meta Description Template</span>
+                <span>Google Search Description</span>
                 <span
                   className="pico-tabular"
-                  style={{ fontSize: 11.5, color: "#64748b", fontWeight: 500 }}
+                  style={{ fontSize: 11.5, color: "#047857", fontWeight: 600 }}
                 >
-                  Resolved: {liveMeta.description.length} / {META_DESCRIPTION_MAX}{" "}
-                  chars
+                  Length: {liveMeta.description.length} / {META_DESCRIPTION_MAX}{" "}
+                  characters (Ideal)
                 </span>
               </label>
               <textarea
@@ -546,26 +513,9 @@ export default function SettingsStudioRoute() {
                 onChange={(e) => setMetaDescriptionTemplate(e.target.value)}
                 className="pico-textarea"
               />
-              <div className="pico-chip-row">
-                {VARIABLE_CHIPS.map((chip) => (
-                  <button
-                    key={chip.token}
-                    type="button"
-                    onClick={() =>
-                      insertTokenIntoField(
-                        chip.token,
-                        "metaDescriptionTemplate",
-                      )
-                    }
-                    className="pico-token-chip"
-                  >
-                    <span>{chip.label}</span>
-                  </button>
-                ))}
-              </div>
             </div>
 
-            {/* Image Alt-Text Template */}
+            {/* Product Photo Description (Google Images) */}
             <div>
               <label
                 htmlFor="imageAltTemplate"
@@ -578,12 +528,12 @@ export default function SettingsStudioRoute() {
                   marginBottom: 6,
                 }}
               >
-                <span>Media Image Alt-Text Template</span>
+                <span>Product Photo Description (Google Images)</span>
                 <span
                   className="pico-tabular"
-                  style={{ fontSize: 11.5, color: "#64748b", fontWeight: 500 }}
+                  style={{ fontSize: 11.5, color: "#047857", fontWeight: 600 }}
                 >
-                  Resolved: {liveAltPreview.length} / 125 chars
+                  Length: {liveAltPreview.length} / 125 characters (Ideal)
                 </span>
               </label>
               <input
@@ -596,24 +546,10 @@ export default function SettingsStudioRoute() {
                 onChange={(e) => setImageAltTemplate(e.target.value)}
                 className="pico-input"
               />
-              <div className="pico-chip-row">
-                {VARIABLE_CHIPS.map((chip) => (
-                  <button
-                    key={chip.token}
-                    type="button"
-                    onClick={() =>
-                      insertTokenIntoField(chip.token, "imageAltTemplate")
-                    }
-                    className="pico-token-chip"
-                  >
-                    <span>{chip.label}</span>
-                  </button>
-                ))}
-              </div>
             </div>
           </section>
 
-          {/* Zero-JS Storefront & AI Indexation Toggles Card */}
+          {/* Card 2: 1-Click Storefront Boosters */}
           <section className="pico-bento-card">
             <h2
               style={{
@@ -623,7 +559,7 @@ export default function SettingsStudioRoute() {
                 color: "#0f172a",
               }}
             >
-              Zero-JS schema, CWV & AI crawler automation
+              1-Click Storefront Boosters
             </h2>
             <p
               style={{
@@ -632,8 +568,8 @@ export default function SettingsStudioRoute() {
                 color: "#64748b",
               }}
             >
-              All storefront injections execute in pure Shopify Liquid with 0.0
-              kB of client-side JavaScript.
+              Everything runs automatically in the background without slowing
+              down your store.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -642,36 +578,36 @@ export default function SettingsStudioRoute() {
                   name: "enableJsonLdSchema",
                   checked: enableJsonLdSchema,
                   onChange: setEnableJsonLdSchema,
-                  title: "JSON-LD Schema Injection (Product, Offer, Brand & FAQPage)",
-                  desc: "Adds Product, Offer, Brand, and FAQ JSON-LD from the theme embed. Saving this does not confirm a Google rich result.",
+                  title: "Google Rich Results (Price, Stock & Star Badges)",
+                  desc: "Shows your product price and In-Stock status directly inside Google search results.",
                 },
                 {
                   name: "enableLcpImagePreload",
                   checked: enableLcpImagePreload,
                   onChange: setEnableLcpImagePreload,
-                  title: "Product image preload",
-                  desc: 'Adds <link rel="preload" as="image" fetchpriority="high"> on product pages when the theme embed is enabled. This app does not measure Largest Contentful Paint.',
+                  title: "Instant Product Photo Speed Boost",
+                  desc: "Preloads your main product photo so pages open faster on mobile and desktop.",
                 },
                 {
                   name: "enableLlmsTxtFeed",
                   checked: enableLlmsTxtFeed,
                   onChange: setEnableLlmsTxtFeed,
-                  title: "Automated /llms.txt AI Crawler Feed",
-                  desc: "Publishes a Markdown file of active products from the latest 50-product scan. It does not guarantee that any assistant will cite them.",
+                  title: "ChatGPT & Perplexity Shopping Visibility",
+                  desc: "Helps AI shopping assistants find, understand, and recommend your products to buyers.",
                 },
                 {
                   name: "enableIndexNowPing",
                   checked: enableIndexNowPing,
                   onChange: setEnableIndexNowPing,
-                  title: "Instant IndexNow Search Engine Pinging",
-                  desc: "Pings api.indexnow.org whenever products are optimized or updated via Shopify webhooks.",
+                  title: "Instant Search Engine Ping",
+                  desc: "Notifies search engines immediately whenever you update a price or product.",
                 },
                 {
                   name: "autoSyncOnProductUpdate",
                   checked: autoSyncOnProductUpdate,
                   onChange: setAutoSyncOnProductUpdate,
-                  title: "Auto-Optimize Missing SEO on Product Update Webhook",
-                  desc: "Automatically populates missing SEO titles, meta descriptions, and alt texts when new products are saved.",
+                  title: "Auto-Optimize New Products",
+                  desc: "Automatically writes missing Google titles and photo descriptions whenever you add a new product.",
                 },
               ].map((toggle) => (
                 <label
@@ -706,7 +642,7 @@ export default function SettingsStudioRoute() {
                     </div>
                     <div
                       style={{
-                        fontSize: 12,
+                        fontSize: 12.5,
                         color: "#64748b",
                         marginTop: 3,
                         paddingLeft: 16,
@@ -730,55 +666,6 @@ export default function SettingsStudioRoute() {
                   />
                 </label>
               ))}
-            </div>
-
-            {/* IndexNow Verification Key Box */}
-            <div
-              style={{
-                marginTop: 14,
-                padding: "12px 14px",
-                borderRadius: 12,
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#334155",
-                  }}
-                >
-                  IndexNow Protocol API Key
-                </div>
-                <code
-                  className="pico-tabular"
-                  style={{
-                    fontSize: 12,
-                    color: "#0f172a",
-                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  }}
-                >
-                  {audit.settings.indexNowApiKey || "Auto-generated on save"}
-                </code>
-              </div>
-              {audit.settings.indexNowApiKey && (
-                <button
-                  type="button"
-                  onClick={() => handleCopy(audit.settings.indexNowApiKey || "")}
-                  className="pico-btn pico-btn--secondary"
-                  style={{ padding: "5px 10px", fontSize: 12 }}
-                >
-                  <CopyIcon size={13} />
-                  <span>{copiedKey ? "Copied" : "Copy Key"}</span>
-                </button>
-              )}
             </div>
 
             <div
@@ -808,13 +695,13 @@ export default function SettingsStudioRoute() {
                 className="pico-btn pico-btn--primary"
               >
                 <SparklesIcon size={15} />
-                <span>{isSaving ? "Saving…" : "Save Automation & Templates"}</span>
+                <span>{isSaving ? "Saving…" : "Save Rules & Boosters"}</span>
               </button>
             </div>
           </section>
         </Form>
 
-        {/* RIGHT COLUMN: Sticky Live SERP, AI Answer Engine & /llms.txt Preview */}
+        {/* RIGHT COLUMN: Sticky Live Search & AI Preview */}
         <aside className="pico-sticky-preview">
           <div className="pico-bento-card">
             <div
@@ -836,7 +723,7 @@ export default function SettingsStudioRoute() {
                     color: "#0f172a",
                   }}
                 >
-                  Template preview
+                  Live Search &amp; AI Preview
                 </h2>
                 <p
                   style={{
@@ -845,13 +732,14 @@ export default function SettingsStudioRoute() {
                     color: "#64748b",
                   }}
                 >
-                  Shows how the templates resolve for the product below. This is not a live Google result or an assistant citation.
+                  See how your product appears to shoppers on Google and inside
+                  AI shopping assistants.
                 </p>
               </div>
 
               {/* Desktop / Mobile Bezel Switcher */}
               <SpringSegmentedControl<BezelMode>
-                ariaLabel="Device bezel"
+                ariaLabel="Device view"
                 value={bezelMode}
                 onChange={setBezelMode}
                 options={[
@@ -869,7 +757,7 @@ export default function SettingsStudioRoute() {
               />
             </div>
 
-            {/* Real Catalog Product Selector Dropdown */}
+            {/* Product Selector Dropdown */}
             <div style={{ marginBottom: 12 }}>
               <label
                 htmlFor="previewProductSelect"
@@ -881,7 +769,7 @@ export default function SettingsStudioRoute() {
                   marginBottom: 5,
                 }}
               >
-                Preview with catalog product:
+                Preview with product:
               </label>
               <select
                 id="previewProductSelect"
@@ -899,7 +787,7 @@ export default function SettingsStudioRoute() {
               </select>
             </div>
 
-            {/* Fluid Segmented Preview Mode Toggles */}
+            {/* Two Visual Preview Mode Tabs */}
             <div style={{ marginBottom: 14, overflowX: "auto" }}>
               <SpringSegmentedControl<PreviewViewMode>
                 ariaLabel="Preview mode"
@@ -908,24 +796,19 @@ export default function SettingsStudioRoute() {
                 options={[
                   {
                     value: "google",
-                    label: "Google Search Snippet View",
+                    label: "Google Search Result",
                     icon: <GlobeSearchIcon size={14} />,
                   },
                   {
                     value: "ai",
-                    label: "Markdown excerpt",
+                    label: "ChatGPT / AI Recommendation",
                     icon: <BotCitationIcon size={14} />,
-                  },
-                  {
-                    value: "llms",
-                    label: "Raw /llms.txt Feed View",
-                    icon: <FileMarkdownIcon size={14} />,
                   },
                 ]}
               />
             </div>
 
-            {/* Device Bezel Stage with Spring-Physics Transition */}
+            {/* Device Bezel Stage */}
             <div
               className={`pico-bezel-frame ${
                 bezelMode === "mobile"
@@ -933,7 +816,7 @@ export default function SettingsStudioRoute() {
                   : "pico-bezel-frame--desktop"
               }`}
             >
-              {/* Browser / Bezel Top Chrome */}
+              {/* Browser Top Chrome */}
               <div
                 style={{
                   display: "flex",
@@ -982,12 +865,10 @@ export default function SettingsStudioRoute() {
                 >
                   {previewMode === "google"
                     ? "google.com/search"
-                    : previewMode === "ai"
-                      ? "perplexity.ai • chatgpt.com"
-                      : `${liveStoreContext.host}/llms.txt`}
+                    : "chatgpt.com • Shopping Assistant"}
                 </span>
                 <span className="pico-tabular" style={{ fontWeight: 600 }}>
-                  {bezelMode === "mobile" ? "390px" : "1280px"}
+                  {bezelMode === "mobile" ? "Mobile" : "Desktop"}
                 </span>
               </div>
 
@@ -1121,174 +1002,187 @@ export default function SettingsStudioRoute() {
                         color: "#475569",
                       }}
                     >
-                      <strong>Resolved image alt text:</strong>{" "}
-                      <code
-                        style={{
-                          background: "#f1f5f9",
-                          padding: "2px 6px",
-                          borderRadius: 6,
-                          color: "#0f172a",
-                        }}
-                      >
-                        {liveAltPreview}
-                      </code>
+                      <strong>Google Images Photo Description:</strong> “
+                      {liveAltPreview}”
                     </div>
                   </div>
                 )}
 
                 {previewMode === "ai" && (
-                  <div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 14,
+                    }}
+                  >
+                    {/* Shopper Question Bubble */}
+                    <div
+                      style={{
+                        alignSelf: "flex-end",
+                        maxWidth: "85%",
+                        padding: "10px 14px",
+                        borderRadius: "14px 14px 4px 14px",
+                        background: "#2563eb",
+                        color: "#ffffff",
+                        fontSize: 12.5,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      Where can I buy{" "}
+                      <strong>{selectedProduct.title}</strong> with fast
+                      shipping?
+                    </div>
+
+                    {/* AI Assistant Response Card */}
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <span className="pico-pill pico-pill--blue">
-                        <BotCitationIcon size={13} />
-                        Markdown excerpt
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 11.5,
-                          color: "#64748b",
-                        }}
-                      >
-                        Preview only. Not a search result.
-                      </span>
-                    </div>
-
-                    <div
-                      style={{
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                        marginBottom: 12,
+                        alignItems: "flex-start",
+                        gap: 10,
                       }}
                     >
                       <div
                         style={{
-                          fontSize: 13,
-                          lineHeight: 1.55,
-                          color: "#0f172a",
+                          width: 28,
+                          height: 28,
+                          borderRadius: 999,
+                          background: "#10b981",
+                          color: "#ffffff",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          marginTop: 2,
                         }}
                       >
-                        <strong>{selectedProduct.title}</strong> is available
-                        from <strong>{liveStoreContext.storeName}</strong> for{" "}
-                        <strong className="pico-tabular">
-                          {priceFormatted}
-                        </strong>{" "}
-                        ({isAvailable ? "currently in stock" : "out of stock"}).{" "}
-                        {liveMeta.description}{" "}
-                        <span
+                        <BotCitationIcon size={15} />
+                      </div>
+
+                      <div
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          padding: "12px 14px",
+                          borderRadius: "4px 14px 14px 14px",
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <div
                           style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            padding: "1px 6px",
-                            borderRadius: 6,
-                            background: "#dbeafe",
-                            color: "#1d4ed8",
-                            fontSize: 11,
+                            fontSize: 11.5,
                             fontWeight: 700,
+                            color: "#047857",
+                            marginBottom: 4,
                           }}
                         >
-                          [1] {liveStoreContext.host}
-                        </span>
-                      </div>
-                    </div>
+                          AI Shopping Assistant
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            lineHeight: 1.55,
+                            color: "#0f172a",
+                            marginBottom: 12,
+                          }}
+                        >
+                          I recommend{" "}
+                          <strong>{selectedProduct.title}</strong> from{" "}
+                          <strong>{liveStoreContext.storeName}</strong>.{" "}
+                          {liveMeta.description}
+                        </div>
 
-                    {/* Cited Source Card */}
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        padding: "10px 12px",
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        background: "#ffffff",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          minWidth: 0,
-                        }}
-                      >
-                        <ProductThumbnail
-                          src={selectedProduct.thumbnailUrl}
-                          alt={liveAltPreview}
-                        />
-                        <div style={{ minWidth: 0 }}>
+                        {/* Visual Product Card inside Chat */}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            padding: "12px",
+                            borderRadius: 12,
+                            border: "1px solid #cbd5e1",
+                            background: "#ffffff",
+                          }}
+                        >
                           <div
                             style={{
-                              fontSize: 12.5,
-                              fontWeight: 600,
-                              color: "#0f172a",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                              minWidth: 0,
                             }}
                           >
-                            {liveMeta.title}
+                            <ProductThumbnail
+                              src={selectedProduct.thumbnailUrl}
+                              alt={liveAltPreview}
+                              large
+                            />
+                            <div style={{ minWidth: 0 }}>
+                              <div
+                                style={{
+                                  fontSize: 13.5,
+                                  fontWeight: 600,
+                                  color: "#0f172a",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {selectedProduct.title}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: "#475569",
+                                  marginTop: 2,
+                                }}
+                              >
+                                Official Store • {liveStoreContext.storeName}
+                              </div>
+                              <div
+                                className="pico-tabular"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  marginTop: 6,
+                                }}
+                              >
+                                <span className="pico-pill pico-pill--success">
+                                  {priceFormatted}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: 11.5,
+                                    fontWeight: 600,
+                                    color: isAvailable ? "#047857" : "#b45309",
+                                  }}
+                                >
+                                  {isAvailable ? "✓ In Stock" : "Out of Stock"}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div
+
+                          <a
+                            href={resolvedUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="pico-btn pico-btn--secondary"
                             style={{
+                              padding: "6px 10px",
                               fontSize: 11.5,
-                              color: "#64748b",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
+                              flexShrink: 0,
                             }}
                           >
-                            {resolvedUrl}
-                          </div>
+                            <span>View Store</span>
+                            <ExternalArrowIcon size={12} />
+                          </a>
                         </div>
                       </div>
-                      <span className="pico-pill pico-pill--success pico-tabular">
-                        {priceFormatted}
-                      </span>
                     </div>
-                  </div>
-                )}
-
-                {previewMode === "llms" && (
-                  <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 8,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: "#334155",
-                        }}
-                      >
-                        /llms.txt Markdown feed ({catalogProducts.length}{" "}
-                        products)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(liveLlmsFeed)}
-                        className="pico-btn pico-btn--secondary"
-                        style={{ padding: "4px 9px", fontSize: 11.5 }}
-                      >
-                        <CopyIcon size={12} />
-                        <span>Copy Markdown</span>
-                      </button>
-                    </div>
-                    <pre className="pico-code-block">{liveLlmsFeed}</pre>
                   </div>
                 )}
               </div>

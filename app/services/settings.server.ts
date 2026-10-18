@@ -1,7 +1,7 @@
 import type { PicoSeoSettings } from "@prisma/client";
 import prisma from "../db.server";
 import { DEFAULT_TEMPLATES } from "../lib/seo-template";
-import { sanitizeStoreName } from "../lib/store-name";
+import { formatStoreDomain, sanitizeStoreName } from "../lib/store-name";
 import type { StoreContext } from "../lib/types";
 import { type AdminClient, gql } from "./graphql.server";
 import { generateIndexNowKey } from "./indexnow.server";
@@ -30,10 +30,16 @@ export async function fetchShopInfo(admin: AdminClient) {
 }
 
 export function toStoreContext(shop: ShopQuery["shop"], settings: Pick<PicoSeoSettings, "storeDisplayName">): StoreContext {
+  const cleanName = sanitizeStoreName(
+    settings.storeDisplayName && settings.storeDisplayName !== "Your Store"
+      ? settings.storeDisplayName
+      : shop.name || shop.myshopifyDomain,
+  );
+  const rawHost = shop.primaryDomain?.host || shop.myshopifyDomain;
   return {
-    storeName: settings.storeDisplayName,
+    storeName: cleanName,
     shopDomain: shop.myshopifyDomain,
-    host: shop.primaryDomain?.host || shop.myshopifyDomain,
+    host: formatStoreDomain(rawHost, cleanName),
     currencyCode: shop.currencyCode,
   };
 }

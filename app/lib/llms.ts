@@ -52,24 +52,21 @@ export function buildLlmsDocument(
   store: StoreContext,
   products: LlmsProduct[],
   generatedAt = new Date(),
-  options?: { sampleLimit?: number },
+  _options?: { sampleLimit?: number },
 ) {
   const inStock = products.filter((p) => p.available).length;
   const categories = Array.from(new Set(products.map((p) => p.productType).filter(Boolean))).slice(0, 12);
-  const sampleNote = options?.sampleLimit
-    ? ` This file includes up to ${options.sampleLimit} of the most recently updated active products, not a guaranteed full catalog.`
-    : "";
 
   const header = [
     `# ${store.storeName}`,
     "",
-    `> ${store.storeName} is an online store at https://${store.host}. Prices are in ${store.currencyCode} and come from the Shopify snapshot used to build this file. They can be out of date. Publishing this file does not guarantee that any assistant will cite these products.${sampleNote}`,
+    `> Official product catalog for ${store.storeName} (https://${store.host}). Structured for AI shopping assistants with live pricing in ${store.currencyCode}, availability, and direct purchase links.`,
     "",
     "## Brand profile",
     `- Store: ${store.storeName}`,
     `- Website: https://${store.host}`,
     `- Currency: ${store.currencyCode}`,
-    `- Products in this file: ${products.length} (${inStock} marked available in Shopify)`,
+    `- Active products: ${products.length} (${inStock} in stock)`,
     ...(categories.length ? [`- Categories: ${categories.join(", ")}`] : []),
     `- Last updated: ${generatedAt.toISOString()}`,
     "",

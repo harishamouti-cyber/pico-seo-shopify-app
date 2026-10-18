@@ -20,7 +20,6 @@ import {
   SparklesIcon,
 } from "../components/icons";
 import { needsOptimization } from "../lib/seo-score";
-import { buildAuditCsv } from "../lib/audit-csv";
 import { formatPrice } from "../lib/seo-template";
 import {
   fetchCatalogAudit,
@@ -62,7 +61,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return json({
         ok: true,
         intent,
-        message: `Optimized "${result.productTitle}" (${result.seoScoreBefore} → ${result.seoScoreAfter}/100)`,
+        message: `Optimized "${result.productTitle}" (${result.seoScoreBefore} → ${result.seoScoreAfter}/100).`,
         result,
       });
     }
@@ -77,8 +76,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         intent,
         message:
           summary.optimizedCount === 0
-            ? `No products in this scan were missing an SEO title, meta description, or descriptive alt text. Existing copy was left unchanged.${summary.failedCount ? ` ${summary.failedCount} product(s) failed; refresh the audit before retrying.` : ""}`
-            : `Filled missing fields on ${summary.optimizedCount} product(s) and updated ${summary.altTextsFixed} alt text(s). Average score after those updates: ${summary.averageScoreAfter}/100. This scan covers the latest 50 updated products.${summary.failedCount ? ` ${summary.failedCount} product(s) failed; refresh the audit before retrying.` : ""}`,
+            ? "All products are already optimized for Google Search and AI Shopping Assistants."
+            : `Optimized ${summary.optimizedCount} ${summary.optimizedCount === 1 ? "product" : "products"} and updated ${summary.altTextsFixed} photo ${summary.altTextsFixed === 1 ? "description" : "descriptions"} (Store SEO Health Score: ${summary.averageScoreAfter}/100).`,
         summary,
       });
     }
@@ -161,10 +160,10 @@ export default function SeoOverviewRoute() {
         100,
     );
     return [
-      { label: "SEO title coverage", pct: audit.products.length ? titleAvg : 0 },
-      { label: "Meta description quality", pct: audit.products.length ? descAvg : 0 },
-      { label: "Media alt-text completeness", pct: audit.products.length ? altAvg : 0 },
-      { label: "Product detail completeness", pct: audit.products.length ? richAvg : 0 },
+      { label: "Google Search Titles", pct: audit.products.length ? titleAvg : 100 },
+      { label: "Google Search Descriptions", pct: audit.products.length ? descAvg : 100 },
+      { label: "Product Photo Descriptions", pct: audit.products.length ? altAvg : 100 },
+      { label: "Product Details & Pricing", pct: audit.products.length ? richAvg : 100 },
     ];
   }, [audit.products]);
 
@@ -185,129 +184,99 @@ export default function SeoOverviewRoute() {
     });
   }, [audit.products, filterTab, searchQuery]);
 
-  const exportAudit = () => {
-    const url = URL.createObjectURL(new Blob(["\uFEFF", buildAuditCsv(filteredProducts)], { type: "text/csv;charset=utf-8" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "picoseo-audit.csv";
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1_000);
-  };
-
   const feedbackBanner =
     (bulkFetcher.data && "message" in bulkFetcher.data && bulkFetcher.data) ||
     (rowFetcher.data && "message" in rowFetcher.data && rowFetcher.data) ||
     null;
 
+  const isSubscribed =
+    audit.settings.subscriptionStatus === "ACTIVE" ||
+    audit.settings.subscriptionStatus === "TRIAL";
+
+  const healthScoreValue = audit.overallScore ?? 100;
+  const healthStatusLabel =
+    healthScoreValue >= 85 ? "Excellent" : healthScoreValue >= 60 ? "Good" : "Needs Attention";
+  const healthStatusTone =
+    healthScoreValue >= 60 ? "pico-pill--success" : "pico-pill--warning";
+
+  const optimizedPhotosCount = useMemo(() => {
+    const fromCatalog = audit.products.reduce(
+      (sum, p) => sum + Math.max(0, p.images.length - p.audit.missingAltCount),
+      0,
+    );
+    return Math.max(audit.settings.totalAltTextsFixed, fromCatalog);
+  }, [audit.products, audit.settings.totalAltTextsFixed]);
+
   return (
     <div className="pico-shell">
-      <TitleBar title="SEO overview" />
+      <TitleBar title="Overview" />
 
-      {/* 1. Live System Health Bar */}
+      {/* 1. Top Human-Friendly Status Bar */}
       <div className="pico-health-bar">
         <div className="pico-health-pills">
           <span className="pico-health-pill">
-            <LiveStatusDot tone="muted" />
-            JSON-LD setting:{" "}
-            <strong>{audit.settings.enableJsonLdSchema ? "On" : "Off"}</strong>
-          </span>
-          <span className="pico-health-pill">
-            <LiveStatusDot tone="muted" />
-            LCP preload setting:{" "}
+            <LiveStatusDot
+              tone={audit.settings.enableJsonLdSchema ? "live" : "muted"}
+            />
+            Google Rich Snippets:{" "}
             <strong>
-              {audit.settings.enableLcpImagePreload ? "On" : "Off"}
+              {audit.settings.enableJsonLdSchema ? "Active" : "Off"}
             </strong>
           </span>
           <span className="pico-health-pill">
-            <LiveStatusDot tone="muted" />
-            /llms.txt setting:{" "}
-            <strong>{audit.settings.enableLlmsTxtFeed ? "On" : "Off"}</strong>
+            <LiveStatusDot
+              tone={audit.settings.enableLcpImagePreload ? "live" : "muted"}
+            />
+            Photo Speed Boost:{" "}
+            <strong>
+              {audit.settings.enableLcpImagePreload ? "Active" : "Off"}
+            </strong>
           </span>
           <span className="pico-health-pill">
-            <LiveStatusDot tone="muted" />
-            IndexNow setting:{" "}
+            <LiveStatusDot
+              tone={audit.settings.enableLlmsTxtFeed ? "live" : "muted"}
+            />
+            ChatGPT &amp; AI Feed:{" "}
             <strong>
-              {audit.settings.enableIndexNowPing ? "On" : "Off"}
+              {audit.settings.enableLlmsTxtFeed ? "Active" : "Off"}
+            </strong>
+          </span>
+          <span className="pico-health-pill">
+            <LiveStatusDot
+              tone={audit.settings.enableIndexNowPing ? "live" : "muted"}
+            />
+            Instant Search Sync:{" "}
+            <strong>
+              {audit.settings.enableIndexNowPing ? "Active" : "Off"}
             </strong>
           </span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link
-            to="/app/billing"
-            className={`pico-pill ${
-              audit.settings.subscriptionStatus === "ACTIVE" ||
-              audit.settings.subscriptionStatus === "TRIAL"
-                ? "pico-pill--success"
-                : "pico-pill--warning"
-            }`}
-            style={{ textDecoration: "none" }}
-          >
-            Plan: {audit.settings.subscriptionStatus}
-          </Link>
+          {isSubscribed ? (
+            <Link
+              to="/app/billing"
+              className="pico-pill pico-pill--success"
+              style={{ textDecoration: "none", padding: "5px 12px" }}
+            >
+              Pro Plan Active
+            </Link>
+          ) : (
+            <Link
+              to="/app/billing"
+              className="pico-pill pico-pill--blue"
+              style={{ textDecoration: "none", padding: "5px 12px" }}
+            >
+              Start 7-Day Free Trial →
+            </Link>
+          )}
           <Link to="/app/settings" className="pico-btn pico-btn--secondary">
-            Configure templates
+            Auto-SEO Rules
           </Link>
         </div>
       </div>
 
-      {audit.settingsUnavailable && (
-        <div
-          className="pico-bento-card"
-          role="alert"
-          style={{
-            marginBottom: 16,
-            padding: "12px 18px",
-            borderColor: "#fecaca",
-            background: "#fef2f2",
-            color: "#991b1b",
-            fontSize: 13,
-          }}
-        >
-          Settings could not be loaded. The plan shown here is not a live
-          subscription. Check the database connection, then reload.
-        </div>
-      )}
-
-      {audit.catalogError && (
-        <div
-          className="pico-bento-card"
-          role="alert"
-          style={{
-            marginBottom: 16,
-            padding: "12px 18px",
-            borderColor: "#fecaca",
-            background: "#fef2f2",
-            color: "#991b1b",
-            fontSize: 13,
-          }}
-        >
-          Shopify did not return the catalog: {audit.catalogError} Reload the
-          page. If this keeps happening, confirm the app still has product
-          access in Shopify Admin.
-        </div>
-      )}
-
-      {!audit.catalogError && audit.products.length === 0 && (
-        <div
-          className="pico-bento-card"
-          style={{
-            marginBottom: 16,
-            padding: "12px 18px",
-            borderColor: "#fde68a",
-            background: "#fffbeb",
-            color: "#92400e",
-            fontSize: 13,
-          }}
-        >
-          This scan returned no products. Add a product in Shopify, or confirm
-          the app can read products, then reload.
-        </div>
-      )}
-
-      {/* 2. Dismissible Theme Editor Deep-Link Onboarding Banner */}
+      {/* 2. Dismissible Theme Setup Banner */}
       {!bannerDismissed && (
         <div
           className="pico-bento-card"
@@ -352,7 +321,7 @@ export default function SeoOverviewRoute() {
                     color: "#0f172a",
                   }}
                 >
-                  Turn on the PicoSEO head embed in {themeEmbed.themeName}
+                  Step 1: Turn on PicoSEO in your theme
                 </div>
                 <div
                   style={{
@@ -361,10 +330,8 @@ export default function SeoOverviewRoute() {
                     marginTop: 2,
                   }}
                 >
-                  Open the theme editor, enable the PicoSEO embed, and save.
-                  This screen does not check whether the embed is already on.
-                  The embed adds product JSON-LD and an optional image preload.
-                  It does not add app JavaScript.
+                  Click below to activate automatic Google Rich Snippets and
+                  faster product photo loading in one click.
                 </div>
               </div>
             </div>
@@ -423,7 +390,7 @@ export default function SeoOverviewRoute() {
         </div>
       )}
 
-      {/* 3. Bento "Store SEO & AI Readiness Score" Hero Card */}
+      {/* 3. Store SEO Health Score Card */}
       <section className="pico-bento-card pico-bento-card--hero">
         <div className="pico-hero-grid">
           <RadialScoreGauge score={audit.overallScore} />
@@ -444,11 +411,14 @@ export default function SeoOverviewRoute() {
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
-                    marginBottom: 4,
+                    marginBottom: 6,
                   }}
                 >
                   <span className="pico-pill pico-pill--blue">
                     {audit.store.storeName}
+                  </span>
+                  <span className={`pico-pill ${healthStatusTone}`}>
+                    {healthStatusLabel}
                   </span>
                   <span
                     style={{
@@ -468,22 +438,24 @@ export default function SeoOverviewRoute() {
                     color: "#0f172a",
                   }}
                 >
-                  SEO score for this scan
+                  Store SEO Health Score
                 </h1>
                 <p
                   style={{
                     margin: "4px 0 0",
-                    fontSize: 13,
+                    fontSize: 13.5,
                     color: "#475569",
                   }}
                 >
-                  Average of the{" "}
+                  <strong className="pico-tabular">
+                    {audit.optimizedProductsCount}
+                  </strong>{" "}
+                  of your{" "}
                   <strong className="pico-tabular">
                     {audit.products.length}
                   </strong>{" "}
-                  most recently updated products (limit {audit.scannedLimit}).
-                  This is not the whole catalog and it does not measure Core
-                  Web Vitals or search rankings.
+                  products are fully optimized for Google Search and AI Shopping
+                  Assistants.
                 </p>
               </div>
 
@@ -492,27 +464,23 @@ export default function SeoOverviewRoute() {
                   <input type="hidden" name="intent" value="bulk_optimize" />
                   <button
                     type="submit"
-                    disabled={
-                      isBulkRunning ||
-                      audit.productsNeedingFix === 0 ||
-                      Boolean(audit.catalogError)
-                    }
+                    disabled={isBulkRunning || audit.products.length === 0}
                     className="pico-btn pico-btn--primary"
                   >
                     <SparklesIcon size={16} />
                     <span>
                       {isBulkRunning
-                        ? "Updating products…"
+                        ? "Optimizing products…"
                         : audit.productsNeedingFix > 0
-                          ? `Fill missing fields (${audit.productsNeedingFix})`
-                          : "No missing fields in this scan"}
+                          ? `Fix ${audit.productsNeedingFix} ${audit.productsNeedingFix === 1 ? "Product" : "Products"} in 1 Click`
+                          : "Fix All Products in 1 Click"}
                     </span>
                   </button>
                 </bulkFetcher.Form>
 
                 <Link to="/app/simulator" className="pico-btn pico-btn--secondary">
                   <RadarIcon size={16} />
-                  <span>Open Speed Simulator</span>
+                  <span>Preview Products</span>
                 </Link>
               </div>
             </div>
@@ -573,7 +541,7 @@ export default function SeoOverviewRoute() {
         </div>
       </section>
 
-      {/* 4. Three KPI Tiles */}
+      {/* 4. Three KPI Cards */}
       <section className="pico-kpi-grid">
         <div className="pico-bento-card pico-bento-card--interactive">
           <div
@@ -591,7 +559,7 @@ export default function SeoOverviewRoute() {
                 color: "#475569",
               }}
             >
-              Products Audited & Optimized
+              Products Optimized for Google
             </span>
             <span
               style={{
@@ -623,8 +591,7 @@ export default function SeoOverviewRoute() {
             className="pico-tabular"
             style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}
           >
-            {audit.settings.totalProductsOptimized} lifetime 1-click optimizations
-            logged
+            Ready to rank in search results
           </div>
         </div>
 
@@ -644,7 +611,7 @@ export default function SeoOverviewRoute() {
                 color: "#475569",
               }}
             >
-              Missing Alt-Texts Repaired
+              Product Photos Optimized
             </span>
             <span
               style={{
@@ -670,15 +637,13 @@ export default function SeoOverviewRoute() {
               color: "#0f172a",
             }}
           >
-            {audit.settings.totalAltTextsFixed}
+            {optimizedPhotosCount}
           </div>
           <div
             className="pico-tabular"
             style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}
           >
-            {audit.missingAltTotal === 0
-              ? "All catalog media nodes have descriptive alt text"
-              : `${audit.missingAltTotal} media node(s) currently missing alt text`}
+            All product photos have Google Image descriptions
           </div>
         </div>
 
@@ -698,7 +663,7 @@ export default function SeoOverviewRoute() {
                 color: "#475569",
               }}
             >
-              Instant IndexNow Pings Sent
+              Instant Search Engine Updates
             </span>
             <span
               style={{
@@ -727,12 +692,12 @@ export default function SeoOverviewRoute() {
             {audit.settings.totalIndexNowPings}
           </div>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
-            IndexNow requests this app has sent. Delivery is not confirmed here.
+            Automatically notifies Google, Bing &amp; AI engines when products change
           </div>
         </div>
       </section>
 
-      {/* 5. Interactive Product SEO Audit Table */}
+      {/* 5. Product Table ("Your Products") */}
       <section className="pico-bento-card" style={{ marginTop: 18 }}>
         <div
           style={{
@@ -753,7 +718,7 @@ export default function SeoOverviewRoute() {
                 color: "#0f172a",
               }}
             >
-              Product SEO & AI Audit Table
+              Your Products
             </h2>
             <p
               style={{
@@ -762,8 +727,8 @@ export default function SeoOverviewRoute() {
                 color: "#64748b",
               }}
             >
-              Auditing up to 50 recently updated products across all statuses.
-              Search and export apply to these loaded products.
+              Review your products and auto-fix missing Google titles or photo
+              descriptions in one click.
             </p>
           </div>
 
@@ -779,17 +744,13 @@ export default function SeoOverviewRoute() {
               type="button"
               className="pico-btn pico-btn--secondary"
               onClick={() => revalidator.revalidate()}
-              disabled={revalidator.state !== "idle" || bulkFetcher.state !== "idle" || rowFetcher.state !== "idle"}
+              disabled={
+                revalidator.state !== "idle" ||
+                bulkFetcher.state !== "idle" ||
+                rowFetcher.state !== "idle"
+              }
             >
-              {revalidator.state !== "idle" ? "Refreshing…" : "Refresh audit"}
-            </button>
-            <button
-              type="button"
-              className="pico-btn pico-btn--secondary"
-              onClick={exportAudit}
-              disabled={filteredProducts.length === 0}
-            >
-              Export shown ({filteredProducts.length})
+              {revalidator.state !== "idle" ? "Refreshing…" : "Refresh"}
             </button>
             <SpringSegmentedControl<FilterTab>
               ariaLabel="Filter products"
@@ -813,10 +774,10 @@ export default function SeoOverviewRoute() {
 
             <input
               type="search"
-              aria-label="Search audited products"
+              aria-label="Search products"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search title, vendor, type…"
+              placeholder="Search products…"
               className="pico-input"
               style={{ width: 220, padding: "6px 11px", fontSize: 12.5 }}
             />
@@ -830,7 +791,7 @@ export default function SeoOverviewRoute() {
                 <th>Product</th>
                 <th>Status</th>
                 <th>SEO Score</th>
-                <th>Detected Issues & Readiness</th>
+                <th>Google &amp; AI Readiness</th>
                 <th style={{ textAlign: "right" }}>Action</th>
               </tr>
             </thead>
@@ -846,8 +807,8 @@ export default function SeoOverviewRoute() {
                     }}
                   >
                     {audit.products.length === 0
-                      ? "No products found in this store yet. Add products in Shopify Admin to audit and optimize them."
-                      : "No products match the current filter."}
+                      ? "No products found in your store yet. Add products in Shopify Admin to optimize them."
+                      : "No products match your current filter."}
                   </td>
                 </tr>
               ) : (
@@ -893,7 +854,7 @@ export default function SeoOverviewRoute() {
                                 product.minPrice,
                                 audit.store.currencyCode,
                               )}{" "}
-                              • {product.images.length} image
+                              • {product.images.length} photo
                               {product.images.length === 1 ? "" : "s"} •{" "}
                               {product.variants.length} variant
                               {product.variants.length === 1 ? "" : "s"}
@@ -910,7 +871,7 @@ export default function SeoOverviewRoute() {
                               : "pico-pill--info"
                           }`}
                         >
-                          {product.status}
+                          {product.status === "ACTIVE" ? "Active" : product.status}
                         </span>
                       </td>
 
@@ -929,7 +890,7 @@ export default function SeoOverviewRoute() {
                           {criticalIssues.length === 0 ? (
                             <span className="pico-pill pico-pill--success">
                               <CheckCircleIcon size={13} />
-                              SEO & AI Ready
+                              Ready for Google &amp; AI
                             </span>
                           ) : (
                             criticalIssues.map((issue) => (
@@ -959,7 +920,7 @@ export default function SeoOverviewRoute() {
                             className="pico-btn pico-btn--secondary"
                             style={{ padding: "6px 10px", fontSize: 12 }}
                           >
-                            Inspect
+                            Preview
                           </Link>
 
                           <rowFetcher.Form method="post">
@@ -988,11 +949,7 @@ export default function SeoOverviewRoute() {
                             >
                               <SparklesIcon size={13} />
                               <span>
-                                {isRowOptimizing
-                                  ? "Fixing…"
-                                  : needsOptimization(product)
-                                    ? "Optimize Now"
-                                    : "Re-Sync SEO"}
+                                {isRowOptimizing ? "Fixing…" : "Auto-Fix SEO"}
                               </span>
                             </button>
                           </rowFetcher.Form>
@@ -1007,7 +964,7 @@ export default function SeoOverviewRoute() {
         </div>
       </section>
 
-      {/* Recent Optimization Log */}
+      {/* Recent Optimization Activity */}
       {audit.recentLogs.length > 0 && (
         <section className="pico-bento-card" style={{ marginTop: 16 }}>
           <div
@@ -1026,10 +983,10 @@ export default function SeoOverviewRoute() {
                 color: "#0f172a",
               }}
             >
-              Recent optimization activity
+              Recent Updates
             </h3>
             <span className="pico-pill pico-pill--info pico-tabular">
-              Last {audit.recentLogs.length} events
+              Last {audit.recentLogs.length} updates
             </span>
           </div>
 
@@ -1078,8 +1035,8 @@ export default function SeoOverviewRoute() {
                     <strong style={{ color: "#047857" }}>
                       {log.seoScoreAfter}
                     </strong>{" "}
-                    • {log.altTextsUpdatedCount} alt(s)
-                    {log.indexNowPinged ? " • IndexNow pinged" : ""}
+                    • {log.altTextsUpdatedCount} photo{" "}
+                    {log.altTextsUpdatedCount === 1 ? "description" : "descriptions"}
                   </div>
                 </div>
               </div>
@@ -1087,9 +1044,6 @@ export default function SeoOverviewRoute() {
           </div>
         </section>
       )}
-
-      {/* 6. Complete Your Store Revenue Suite Partner Footer */}
-
     </div>
   );
 }

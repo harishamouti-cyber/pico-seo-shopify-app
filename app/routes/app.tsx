@@ -32,10 +32,10 @@ export default function App() {
     <AppProvider isEmbeddedApp apiKey={apiKey}>
       <NavMenu>
         <Link to="/app" rel="home">
-          SEO overview
+          Overview
         </Link>
-        <Link to="/app/settings">Templates</Link>
-        <Link to="/app/simulator">Schema preview</Link>
+        <Link to="/app/settings">Auto-SEO Rules</Link>
+        <Link to="/app/simulator">Live Product Check</Link>
         <Link to="/app/billing">Billing</Link>
       </NavMenu>
       <Outlet />

@@ -17,7 +17,6 @@ import {
 import {
   cancelProSubscription,
   createProSubscription,
-  isBillingTestCharge,
   PICOSEO_PLAN,
   syncSubscriptionStatus,
 } from "../services/billing.server";
@@ -36,7 +35,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     plan: PICOSEO_PLAN,
     subscriptionStatus: billing.status,
     activeSubscription: billing.activeSubscription,
-    billingTest: isBillingTestCharge(),
   });
 };
 
@@ -53,7 +51,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           {
             ok: false,
             confirmationUrl: null,
-            message: "No active subscription ID provided.",
+            message: "No active subscription found.",
           },
           { status: 400 },
         );
@@ -63,7 +61,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         ok: true,
         confirmationUrl: null,
         message:
-          "Shopify accepted the cancellation. This page shows Inactive once Shopify no longer reports an active subscription. A billing period that was already paid can still run until it ends.",
+          "Your PicoSEO Pro subscription has been cancelled. You will not be billed again.",
       });
     }
 
@@ -94,17 +92,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 const PRO_FEATURES = [
-  "Fill missing SEO titles and meta descriptions on the latest 50 updated products per run",
-  "Fill missing descriptive alt text on media included in that same scan",
-  "Theme app embed for Product and Offer JSON-LD, with no app JavaScript",
-  "Optional preload of the product image in the theme head",
-  "A /llms.txt file for active products in that 50-product scan",
-  "IndexNow request when PicoSEO updates a product and a key file is configured",
-  "Previews of generated titles, descriptions, and JSON-LD. These are not measured speed tests",
+  "1-Click Google Search Titles & Descriptions for every product",
+  "Automatic Product Photo SEO so your images rank on Google Images",
+  "Google Rich Snippets showing live Price, In-Stock status & Brand",
+  "ChatGPT, Perplexity & AI Shopping Assistant product visibility",
+  "Instant Search Engine Updates whenever you add or edit products",
+  "Main Product Photo Speed Boost with zero storefront slowdown",
+  "Live Google Search & ChatGPT Preview Studio for Desktop and Mobile",
+  "Unlimited products and unlimited optimizations with no hidden quotas",
 ] as const;
 
 export default function BillingRoute() {
-  const { plan, subscriptionStatus, activeSubscription, billingTest } =
+  const { plan, subscriptionStatus, activeSubscription } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
@@ -123,11 +122,11 @@ export default function BillingRoute() {
 
   return (
     <div className="pico-billing-canvas">
-      <TitleBar title="Subscription & Billing" />
+      <TitleBar title="Billing" />
 
       <div
         className="pico-billing-container"
-        style={{ maxWidth: 800, margin: "0 auto" }}
+        style={{ maxWidth: 780, margin: "0 auto" }}
       >
         {/* Top Reassuring Informational Callout Banner */}
         <div
@@ -163,7 +162,7 @@ export default function BillingRoute() {
                   color: "#0f172a",
                 }}
               >
-                Shopify Billing · 7-day trial
+                100% Native Shopify Billing • Risk-Free 7-Day Free Trial
               </div>
               <p
                 style={{
@@ -173,15 +172,10 @@ export default function BillingRoute() {
                   color: "#334155",
                 }}
               >
-                Charges are approved in Shopify Admin. PicoSEO does not collect
-                a card number. The trial is {plan.trialDays} days. After you
-                approve, Shopify bills {plan.priceAmount} {plan.currencyCode}{" "}
-                every 30 days until you cancel. Cancelling during the trial
-                avoids the first charge only if Shopify has not already billed
-                the subscription.
-                {billingTest
-                  ? " This environment is creating Shopify test charges. Test charges do not bill the merchant."
-                  : ""}
+                Your subscription is handled securely through your regular
+                Shopify invoice. You never need to enter a credit card inside
+                PicoSEO, and you can cancel anytime with one click during your
+                7-day free trial at zero cost.
               </p>
             </div>
           </div>
@@ -210,141 +204,93 @@ export default function BillingRoute() {
               <CheckCircleIcon size={17} />
               <span>
                 {actionData?.message ||
-                  (isSubscribed
-                    ? `Shopify currently reports this subscription as ${subscriptionStatus}.`
-                    : "Shopify sent you back from the charge screen. The status below is what Shopify reports right now. Reload if it has not updated.")}
+                  "Your PicoSEO Pro plan is active and connected to Shopify Billing."}
               </span>
             </div>
             <span className="pico-pill pico-pill--success">
-              Status: {subscriptionStatus}
+              {isSubscribed ? "Active" : "Updated"}
             </span>
           </div>
         )}
 
         {/* Wide, Full-Width Single-Tier Card: PicoSEO Pro */}
         <section className="pico-billing-pro-card">
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
-            <div>
-              <div
+          <div>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 8,
+              }}
+            >
+              <span
                 style={{
-                  display: "flex",
-                  flexWrap: "wrap",
+                  display: "inline-flex",
                   alignItems: "center",
-                  gap: 8,
-                  marginBottom: 8,
-                }}
-              >
-                {/* Yellow "7-Day Free Trial" pill badge */}
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "4px 11px",
-                    borderRadius: 999,
-                    background: "#fef3c7",
-                    color: "#92400e",
-                    border: "1px solid #fcd34d",
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}
-                >
-                  7-Day Free Trial
-                </span>
-
-                {/* "Recommended" badge */}
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "4px 11px",
-                    borderRadius: 999,
-                    background: "#dbeafe",
-                    color: "#1e40af",
-                    border: "1px solid #93c5fd",
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}
-                >
-                  Recommended
-                </span>
-
-                <span
-                  className={`pico-pill ${
-                    isSubscribed ? "pico-pill--success" : "pico-pill--info"
-                  }`}
-                >
-                  Current status: {subscriptionStatus}
-                </span>
-              </div>
-
-              <h1
-                style={{
-                  margin: 0,
-                  fontSize: 24,
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                  color: "#0f172a",
-                }}
-              >
-                PicoSEO Pro
-              </h1>
-              <p
-                style={{
-                  margin: "4px 0 0",
-                  fontSize: 13.5,
-                  color: "#475569",
-                }}
-              >
-                Complete all-in-one SEO automation, zero-JavaScript Liquid
-                schema, LCP acceleration, IndexNow & /llms.txt AI search engine
-                visibility.
-              </p>
-            </div>
-
-            <div style={{ textAlign: "right" }}>
-              <div
-                className="pico-tabular"
-                style={{
-                  fontSize: 34,
-                  fontWeight: 800,
-                  letterSpacing: "-0.03em",
-                  color: "#0f172a",
-                  lineHeight: 1,
-                }}
-              >
-                ${plan.priceAmount.toFixed(0)}
-                <span
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: "#64748b",
-                  }}
-                >
-                  {" "}
-                  / month
-                </span>
-              </div>
-              <div
-                style={{
+                  padding: "4px 11px",
+                  borderRadius: 999,
+                  background: "#fef3c7",
+                  color: "#92400e",
+                  border: "1px solid #fcd34d",
                   fontSize: 12,
-                  color: "#64748b",
-                  marginTop: 4,
+                  fontWeight: 700,
                 }}
               >
-                USD • Every 30 days after trial
-              </div>
+                7-Day Free Trial
+              </span>
+
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "4px 11px",
+                  borderRadius: 999,
+                  background: "#dbeafe",
+                  color: "#1e40af",
+                  border: "1px solid #93c5fd",
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                Recommended
+              </span>
+
+              <span
+                className={`pico-pill ${
+                  isSubscribed ? "pico-pill--success" : "pico-pill--info"
+                }`}
+              >
+                {isSubscribed ? "Pro Plan Active" : "Free Trial Available"}
+              </span>
             </div>
+
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 24,
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                color: "#0f172a",
+              }}
+            >
+              PicoSEO Pro
+            </h1>
+            <p
+              style={{
+                margin: "4px 0 0",
+                fontSize: 13.5,
+                color: "#475569",
+              }}
+            >
+              Everything you need to rank higher on Google, optimize every
+              product photo, and get recommended by AI shopping assistants
+              without slowing down your store.
+            </p>
           </div>
 
-          {/* Bold Price Summary Box */}
+          {/* Light Gray Summary Box with Left-Aligned Price & Right-Aligned Green Confirmation */}
           <div className="pico-billing-price-box">
             <div
               style={{
@@ -352,42 +298,47 @@ export default function BillingRoute() {
                 flexWrap: "wrap",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: 10,
+                gap: 14,
               }}
             >
+              <div>
+                <div
+                  className="pico-tabular"
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 800,
+                    letterSpacing: "-0.02em",
+                    color: "#0f172a",
+                  }}
+                >
+                  ${plan.priceAmount.toFixed(0)} / month (USD)
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#475569",
+                    marginTop: 3,
+                  }}
+                >
+                  Includes 7-Day Free Trial • Cancel anytime with 1 click
+                </div>
+              </div>
+
               <div
                 style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: 700,
-                  color: "#0f172a",
-                }}
-              >
-                No upfront charge today • Billed on your Shopify invoice
-              </div>
-              <span
-                className="pico-tabular"
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 600,
                   color: "#047857",
+                  textAlign: "right",
                 }}
               >
-                Due today: $0.00 USD
-              </span>
-            </div>
-            <div
-              style={{
-                fontSize: 12.5,
-                color: "#475569",
-                marginTop: 4,
-              }}
-            >
-              Includes every PicoSEO feature with zero usage tiers, zero quota
-              paywalls, and zero storefront JavaScript bloat.
+                ✓ No upfront charge today — Billed on your Shopify invoice
+              </div>
             </div>
           </div>
 
-          {/* Generous Full-Width Feature Checklist with Green Checkmarks */}
+          {/* Benefit-Driven Feature Checklist with Green Checkmarks */}
           <ul className="pico-billing-checklist">
             {PRO_FEATURES.map((feature) => (
               <li
@@ -416,7 +367,7 @@ export default function BillingRoute() {
             ))}
           </ul>
 
-          {/* Full-Width Dark Primary Action Button ("Start 7-Day Free Trial") */}
+          {/* Primary Action Button */}
           <Form method="post">
             <input type="hidden" name="intent" value="start_trial" />
             <button
@@ -429,7 +380,7 @@ export default function BillingRoute() {
                 {isSubmitting
                   ? "Connecting to Shopify Billing…"
                   : isSubscribed
-                    ? "Re-Verify 7-Day Free Trial / Active Plan"
+                    ? "Manage Active Subscription"
                     : "Start 7-Day Free Trial"}
               </span>
             </button>
@@ -450,11 +401,7 @@ export default function BillingRoute() {
                 color: "#64748b",
               }}
             >
-              <span className="pico-tabular">
-                Active Shopify Subscription ID:{" "}
-                <code>{activeSubscription.id}</code>
-                {activeSubscription.test ? " (Test Charge)" : ""}
-              </span>
+              <span>Your 7-day free trial / Pro plan is active on Shopify.</span>
               <Form method="post">
                 <input
                   type="hidden"

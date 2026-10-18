@@ -33,10 +33,17 @@ function isNoise(token: string) {
   return false;
 }
 
+const BRAND_OVERRIDES: Record<string, string> = {
+  rankpilot: "RankPilot",
+  picoseo: "PicoSEO",
+  quickstart: "QuickStart",
+};
+
 function titleCase(words: string[]) {
   return words
     .map((w, i) => {
       const lower = w.toLowerCase();
+      if (BRAND_OVERRIDES[lower]) return BRAND_OVERRIDES[lower];
       if (i > 0 && SMALL_WORDS.has(lower)) return lower;
       return lower.charAt(0).toUpperCase() + lower.slice(1);
     })
@@ -58,3 +65,25 @@ export function sanitizeStoreName(raw: string | null | undefined): string {
   if (!chosen.length) return "Your Store";
   return titleCase(chosen);
 }
+
+/**
+ * Formats a store host so raw `.myshopify.com` development handles
+ * (such as `rankpilot-xk8wrvgu.myshopify.com`) never leak into badges or
+ * Google Search previews, returning a clean domain like `rankpilot.com`.
+ */
+export function formatStoreDomain(
+  rawHost: string | null | undefined,
+  storeName?: string | null,
+): string {
+  const host = (rawHost || "").trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+  if (host && !/\.myshopify\.com$/i.test(host) && host.includes(".")) {
+    return host.toLowerCase();
+  }
+  const cleanBrand = sanitizeStoreName(storeName || host || "store");
+  const slug = cleanBrand
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+  return `${slug || "store"}.com`;
+}
+

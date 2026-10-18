@@ -67,8 +67,8 @@ export function RadialScoreGauge({
         role="img"
         aria-label={
           hasScore
-            ? `SEO score ${clamped} out of 100 for this product scan`
-            : "No SEO score because this scan returned no products"
+            ? `Store SEO Health Score ${clamped} out of 100`
+            : "Store SEO Health Score"
         }
       >
         <circle
@@ -123,7 +123,7 @@ export function RadialScoreGauge({
             marginTop: 2,
           }}
         >
-          {hasScore ? "This scan" : "No score"}
+          {hasScore ? "Health score" : "No score"}
         </span>
       </div>
     </div>

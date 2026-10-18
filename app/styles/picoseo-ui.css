@@ -564,7 +564,7 @@
 }
 
 .pico-billing-container {
-  max-width: 800px;
+  max-width: 780px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
