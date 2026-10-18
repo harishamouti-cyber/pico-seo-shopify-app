@@ -173,3 +173,38 @@ export function GaugeSpeedIcon({ size = 18, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function CheckIcon({ size = 16, ...props }: IconProps) {
+  return (
+    <svg {...baseProps(size, props)}>
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+
+export function RefreshCwIcon({ size = 16, ...props }: IconProps) {
+  return (
+    <svg {...baseProps(size, props)}>
+      <path d="M21 2v6h-6" />
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M3 22v-6h6" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ size = 16, ...props }: IconProps) {
+  return (
+    <svg {...baseProps(size, props)}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+export function StarBadgeIcon({ size = 16, ...props }: IconProps) {
+  return (
+    <svg {...baseProps(size, props)}>
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}

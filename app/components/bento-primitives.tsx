@@ -34,13 +34,13 @@ export function ScoreBadge({ score }: { score: number }) {
 
 export function RadialScoreGauge({
   score,
-  size = 168,
+  size = 156,
 }: {
   score: number | null;
   size?: number;
 }) {
   const hasScore = typeof score === "number" && Number.isFinite(score);
-  const stroke = 12;
+  const stroke = 11;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const clamped = hasScore ? Math.max(0, Math.min(100, score)) : 0;
@@ -49,84 +49,123 @@ export function RadialScoreGauge({
     clamped >= 80 ? "#10b981" : clamped >= 50 ? "#f59e0b" : "#ef4444";
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: size,
-        height: size,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        margin: "0 auto",
-      }}
-    >
-      <svg
-        width={size}
-        height={size}
-        style={{ transform: "rotate(-90deg)" }}
-        role="img"
-        aria-label={
-          hasScore
-            ? `Store SEO Health Score ${clamped} out of 100`
-            : "Store SEO Health Score"
-        }
-      >
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="#e2e8f0"
-          strokeWidth={stroke}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          style={{
-            transition: "stroke-dashoffset 600ms cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
-        />
-      </svg>
+    <div className="pico-gauge-well">
       <div
         style={{
-          position: "absolute",
-          textAlign: "center",
+          position: "relative",
+          width: size,
+          height: size,
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto",
         }}
       >
-        <span
-          className="pico-tabular"
+        <svg
+          width={size}
+          height={size}
+          style={{ transform: "rotate(-90deg)" }}
+          role="img"
+          aria-label={
+            hasScore
+              ? `Store SEO Health Score ${clamped} out of 100`
+              : "Store SEO Health Score"
+          }
+        >
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="#e2e8f0"
+            strokeWidth={stroke}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            style={{
+              transition: "stroke-dashoffset 600ms cubic-bezier(0.22, 1, 0.36, 1)",
+            }}
+          />
+        </svg>
+        <div
           style={{
-            fontSize: 36,
-            fontWeight: 700,
-            letterSpacing: "-0.03em",
-            lineHeight: 1.05,
-            color: "#0f172a",
+            position: "absolute",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
-          {hasScore ? clamped : "—"}
-        </span>
-        <span
-          style={{
-            fontSize: 11.5,
-            fontWeight: 600,
-            color: "#64748b",
-            marginTop: 2,
-          }}
-        >
-          {hasScore ? "Health score" : "No score"}
-        </span>
+          <span
+            className="pico-tabular"
+            style={{
+              fontSize: 34,
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              lineHeight: 1.05,
+              color: "#0f172a",
+            }}
+          >
+            {hasScore ? clamped : "—"}
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#64748b",
+              marginTop: 2,
+            }}
+          >
+            {hasScore ? "Health score" : "No score"}
+          </span>
+        </div>
       </div>
     </div>
+  );
+}
+
+export function WatermelonToggle({
+  checked,
+  onChange,
+  name,
+  id,
+  ariaLabel,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  name?: string;
+  id?: string;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      id={id}
+      onClick={() => onChange(!checked)}
+      className={`pico-toggle-switch ${checked ? "pico-toggle-switch--checked" : ""}`}
+    >
+      <span className="pico-toggle-knob" />
+      {name && (
+        <input
+          type="checkbox"
+          name={name}
+          checked={checked}
+          readOnly
+          style={{ display: "none" }}
+        />
+      )}
+    </button>
   );
 }
 

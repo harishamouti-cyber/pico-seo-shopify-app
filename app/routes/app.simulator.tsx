@@ -10,10 +10,10 @@ import {
 import {
   BoltIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
   CopyIcon,
   GaugeSpeedIcon,
   GlobeSearchIcon,
-  SparklesIcon,
 } from "../components/icons";
 import prisma from "../db.server";
 import { buildProductJsonLd, validateProductJsonLd } from "../lib/jsonld";
@@ -263,19 +263,26 @@ export default function SimulatorRoute() {
               gap: 10,
             }}
           >
-            <select
-              aria-label="Select product to check"
-              value={selectedProduct?.id || ""}
-              onChange={(e) => setSelectedProductId(e.target.value)}
-              className="pico-select"
-              style={{ minWidth: 260, width: "auto" }}
+            <div
+              className="pico-select-wrapper"
+              style={{ minWidth: 280, width: "auto" }}
             >
-              {audit.products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.title} — Score {product.audit.score}/100
-                </option>
-              ))}
-            </select>
+              <select
+                aria-label="Select product to check"
+                value={selectedProduct?.id || ""}
+                onChange={(e) => setSelectedProductId(e.target.value)}
+                className="pico-select-custom"
+              >
+                {audit.products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.title} — Score {product.audit.score}/100
+                  </option>
+                ))}
+              </select>
+              <span className="pico-select-arrow">
+                <ChevronDownIcon size={16} />
+              </span>
+            </div>
 
             {selectedProduct && (
               <fetcher.Form method="post">
@@ -289,6 +296,7 @@ export default function SimulatorRoute() {
                   type="submit"
                   disabled={isRunningTest}
                   className="pico-btn pico-btn--primary"
+                  style={{ height: 40 }}
                 >
                   <BoltIcon size={15} />
                   <span>
@@ -401,7 +409,7 @@ export default function SimulatorRoute() {
                     className="pico-btn pico-btn--primary"
                     style={{ padding: "8px 13px", fontSize: 12.5 }}
                   >
-                    <SparklesIcon size={14} />
+                    <BoltIcon size={14} />
                     <span>
                       {isApplying
                         ? "Optimizing…"
@@ -529,18 +537,7 @@ export default function SimulatorRoute() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 9,
-                      background: "#eff6ff",
-                      color: "#2563eb",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
+                  <span className="pico-icon-badge">
                     <GlobeSearchIcon size={18} />
                   </span>
                   <div>
@@ -628,11 +625,11 @@ export default function SimulatorRoute() {
                 </div>
               </div>
 
-              {/* Five Visual Rich Result Checkmarks */}
+              {/* Six Visual Rich Result Checkmarks (Balanced 3x2 Grid) */}
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
                   gap: 10,
                 }}
               >
@@ -653,6 +650,10 @@ export default function SimulatorRoute() {
                   {
                     label: "Description",
                     value: "Complete & Indexed",
+                  },
+                  {
+                    label: "Product URL & Domain",
+                    value: "Verified & Canonical",
                   },
                 ].map((item) => (
                   <div
@@ -710,18 +711,7 @@ export default function SimulatorRoute() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 9,
-                    background: "#ecfdf5",
-                    color: "#059669",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+                <span className="pico-icon-badge">
                   <GaugeSpeedIcon size={18} />
                 </span>
                 <div>
@@ -756,7 +746,8 @@ export default function SimulatorRoute() {
               {[
                 {
                   title: "Store Speed Impact",
-                  value: "Zero Slowdown (100% Native)",
+                  value: "Zero Slowdown",
+                  badge: "100% Native",
                   desc: "Runs directly in Shopify without adding heavy scripts.",
                 },
                 {
@@ -764,16 +755,21 @@ export default function SimulatorRoute() {
                   value: audit.settings.enableLcpImagePreload
                     ? "Active"
                     : "Paused",
+                  badge: audit.settings.enableLcpImagePreload
+                    ? "Active"
+                    : "Off",
                   desc: "Preloads your main product photo for faster page loads.",
                 },
                 {
                   title: "Google Rich Results",
                   value: "6 / 6 Ready",
+                  badge: "Complete",
                   desc: "Price, stock status, brand, and product details are ready.",
                 },
                 {
                   title: "AI Search Readiness",
                   value: "Ready for ChatGPT",
+                  badge: "Optimized",
                   desc: "Structured for ChatGPT, Perplexity, and AI shopping assistants.",
                 },
               ].map((card) => (
@@ -788,12 +784,24 @@ export default function SimulatorRoute() {
                 >
                   <div
                     style={{
-                      fontSize: 12,
-                      color: "#64748b",
-                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
                     }}
                   >
-                    {card.title}
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "#64748b",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {card.title}
+                    </span>
+                    <span className="pico-pill pico-pill--success" style={{ fontSize: 11, padding: "2px 8px" }}>
+                      {card.badge}
+                    </span>
                   </div>
                   <div
                     className="pico-tabular"
@@ -801,7 +809,7 @@ export default function SimulatorRoute() {
                       fontSize: 16,
                       fontWeight: 700,
                       color: "#047857",
-                      marginTop: 5,
+                      marginTop: 6,
                     }}
                   >
                     {card.value}

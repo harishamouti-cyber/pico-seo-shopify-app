@@ -17,7 +17,7 @@ import {
   GlobeSearchIcon,
   ImageFrameIcon,
   RadarIcon,
-  SparklesIcon,
+  RefreshCwIcon,
 } from "../components/icons";
 import { needsOptimization } from "../lib/seo-score";
 import { formatPrice } from "../lib/seo-template";
@@ -223,6 +223,7 @@ export default function SeoOverviewRoute() {
               {audit.settings.enableJsonLdSchema ? "Active" : "Off"}
             </strong>
           </span>
+          <span className="pico-health-divider" />
           <span className="pico-health-pill">
             <LiveStatusDot
               tone={audit.settings.enableLcpImagePreload ? "live" : "muted"}
@@ -232,6 +233,7 @@ export default function SeoOverviewRoute() {
               {audit.settings.enableLcpImagePreload ? "Active" : "Off"}
             </strong>
           </span>
+          <span className="pico-health-divider" />
           <span className="pico-health-pill">
             <LiveStatusDot
               tone={audit.settings.enableLlmsTxtFeed ? "live" : "muted"}
@@ -241,6 +243,7 @@ export default function SeoOverviewRoute() {
               {audit.settings.enableLlmsTxtFeed ? "Active" : "Off"}
             </strong>
           </span>
+          <span className="pico-health-divider" />
           <span className="pico-health-pill">
             <LiveStatusDot
               tone={audit.settings.enableIndexNowPing ? "live" : "muted"}
@@ -298,19 +301,7 @@ export default function SeoOverviewRoute() {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: "#2563eb",
-                  color: "#ffffff",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
+              <span className="pico-icon-badge">
                 <BoltIcon size={18} />
               </span>
               <div>
@@ -467,7 +458,7 @@ export default function SeoOverviewRoute() {
                     disabled={isBulkRunning || audit.products.length === 0}
                     className="pico-btn pico-btn--primary"
                   >
-                    <SparklesIcon size={16} />
+                    <BoltIcon size={15} />
                     <span>
                       {isBulkRunning
                         ? "Optimizing products…"
@@ -526,10 +517,10 @@ export default function SeoOverviewRoute() {
                         borderRadius: 999,
                         background:
                           item.pct >= 80
-                            ? "#10b981"
+                            ? "linear-gradient(90deg, #10b981 0%, #34d399 100%)"
                             : item.pct >= 50
-                              ? "#f59e0b"
-                              : "#ef4444",
+                              ? "linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)"
+                              : "linear-gradient(90deg, #ef4444 0%, #f87171 100%)",
                         transition: "width 420ms cubic-bezier(0.22, 1, 0.36, 1)",
                       }}
                     />
@@ -561,19 +552,8 @@ export default function SeoOverviewRoute() {
             >
               Products Optimized for Google
             </span>
-            <span
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 8,
-                background: "#eff6ff",
-                color: "#2563eb",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <SparklesIcon size={16} />
+            <span className="pico-icon-badge">
+              <BoltIcon size={17} />
             </span>
           </div>
           <div
@@ -613,19 +593,8 @@ export default function SeoOverviewRoute() {
             >
               Product Photos Optimized
             </span>
-            <span
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 8,
-                background: "#ecfdf5",
-                color: "#059669",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ImageFrameIcon size={16} />
+            <span className="pico-icon-badge">
+              <ImageFrameIcon size={17} />
             </span>
           </div>
           <div
@@ -665,19 +634,8 @@ export default function SeoOverviewRoute() {
             >
               Instant Search Engine Updates
             </span>
-            <span
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 8,
-                background: "#fffbeb",
-                color: "#d97706",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <GlobeSearchIcon size={16} />
+            <span className="pico-icon-badge">
+              <GlobeSearchIcon size={17} />
             </span>
           </div>
           <div
@@ -750,7 +708,8 @@ export default function SeoOverviewRoute() {
                 rowFetcher.state !== "idle"
               }
             >
-              {revalidator.state !== "idle" ? "Refreshing…" : "Refresh"}
+              <RefreshCwIcon size={13} />
+              <span>{revalidator.state !== "idle" ? "Refreshing…" : "Refresh"}</span>
             </button>
             <SpringSegmentedControl<FilterTab>
               ariaLabel="Filter products"
@@ -814,6 +773,7 @@ export default function SeoOverviewRoute() {
               ) : (
                 filteredProducts.map((product) => {
                   const isRowOptimizing = activeRowProductId === product.id;
+                  const isFullyOptimized = product.audit.score >= 100;
                   const criticalIssues = product.audit.issues.filter(
                     (i) => i.tone === "critical" || i.tone === "warning",
                   );
@@ -944,12 +904,24 @@ export default function SeoOverviewRoute() {
                             <button
                               type="submit"
                               disabled={isRowOptimizing || isBulkRunning}
-                              className="pico-btn pico-btn--primary"
+                              className={`pico-btn ${
+                                isFullyOptimized
+                                  ? "pico-btn--ghost"
+                                  : "pico-btn--primary"
+                              }`}
                               style={{ padding: "6px 12px", fontSize: 12 }}
                             >
-                              <SparklesIcon size={13} />
+                              {isFullyOptimized ? (
+                                <CheckCircleIcon size={13} />
+                              ) : (
+                                <BoltIcon size={13} />
+                              )}
                               <span>
-                                {isRowOptimizing ? "Fixing…" : "Auto-Fix SEO"}
+                                {isRowOptimizing
+                                  ? "Fixing…"
+                                  : isFullyOptimized
+                                    ? "Optimized"
+                                    : "Fix SEO Now"}
                               </span>
                             </button>
                           </rowFetcher.Form>

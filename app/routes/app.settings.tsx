@@ -4,19 +4,21 @@ import { json } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { TitleBar } from "@shopify/app-bridge-react";
 import {
-  LiveStatusDot,
   ProductThumbnail,
   SpringSegmentedControl,
+  WatermelonToggle,
 } from "../components/bento-primitives";
 import {
   BotCitationIcon,
   CheckCircleIcon,
+  CheckIcon,
   DesktopBezelIcon,
   ExternalArrowIcon,
+  GaugeSpeedIcon,
   GlobeSearchIcon,
   MobileBezelIcon,
   PlusChipIcon,
-  SparklesIcon,
+  RadarIcon,
 } from "../components/icons";
 import prisma from "../db.server";
 import {
@@ -34,6 +36,30 @@ import { fetchCatalogAudit } from "../services/catalog-seo.server";
 import { generateIndexNowKey } from "../services/indexnow.server";
 import { ensureStoreInfrastructure } from "../services/settings.server";
 import { authenticate } from "../shopify.server";
+
+export const TOKEN_PAIRS = [
+  { display: "[Product Name]", raw: "{{product_title}}" },
+  { display: "[Variant]", raw: "{{variant_title}}" },
+  { display: "[Price]", raw: "{{price}}" },
+  { display: "[Store Name]", raw: "{{store_name}}" },
+  { display: "[Category]", raw: "{{product_type}}" },
+] as const;
+
+export function toDisplayTemplate(str: string): string {
+  let out = str;
+  for (const { display, raw } of TOKEN_PAIRS) {
+    out = out.split(raw).join(display);
+  }
+  return out;
+}
+
+export function toDbTemplate(str: string): string {
+  let out = str;
+  for (const { display, raw } of TOKEN_PAIRS) {
+    out = out.split(display).join(raw);
+  }
+  return out;
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -60,14 +86,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const rawStoreName = String(formData.get("storeDisplayName") || "").trim();
   const storeDisplayName = sanitizeStoreName(rawStoreName || session.shop);
+  const rawMetaTitle = String(formData.get("metaTitleTemplate") || "").trim();
   const metaTitleTemplate =
-    String(formData.get("metaTitleTemplate") || "").trim() ||
+    (rawMetaTitle ? toDbTemplate(rawMetaTitle) : "") ||
     DEFAULT_TEMPLATES.metaTitleTemplate;
+
+  const rawMetaDesc = String(formData.get("metaDescriptionTemplate") || "").trim();
   const metaDescriptionTemplate =
-    String(formData.get("metaDescriptionTemplate") || "").trim() ||
+    (rawMetaDesc ? toDbTemplate(rawMetaDesc) : "") ||
     DEFAULT_TEMPLATES.metaDescriptionTemplate;
+
+  const rawImageAlt = String(formData.get("imageAltTemplate") || "").trim();
   const imageAltTemplate =
-    String(formData.get("imageAltTemplate") || "").trim() ||
+    (rawImageAlt ? toDbTemplate(rawImageAlt) : "") ||
     DEFAULT_TEMPLATES.imageAltTemplate;
 
   const autoSyncOnProductUpdate = formData.get("autoSyncOnProductUpdate") === "on";
@@ -139,14 +170,6 @@ const FALLBACK_SAMPLE_PRODUCT: PicoProduct = {
   maxPrice: "749.95",
 };
 
-const VARIABLE_CHIPS = [
-  { token: "{{product_title}}", label: "+ Product Name" },
-  { token: "{{variant_title}}", label: "+ Variant" },
-  { token: "{{price}}", label: "+ Price" },
-  { token: "{{store_name}}", label: "+ Store Name" },
-  { token: "{{product_type}}", label: "+ Category" },
-] as const;
-
 export default function SettingsStudioRoute() {
   const { audit } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
@@ -157,13 +180,13 @@ export default function SettingsStudioRoute() {
     audit.store.storeName,
   );
   const [metaTitleTemplate, setMetaTitleTemplate] = useState(
-    audit.settings.metaTitleTemplate,
+    toDisplayTemplate(audit.settings.metaTitleTemplate),
   );
   const [metaDescriptionTemplate, setMetaDescriptionTemplate] = useState(
-    audit.settings.metaDescriptionTemplate,
+    toDisplayTemplate(audit.settings.metaDescriptionTemplate),
   );
   const [imageAltTemplate, setImageAltTemplate] = useState(
-    audit.settings.imageAltTemplate,
+    toDisplayTemplate(audit.settings.imageAltTemplate),
   );
 
   const [autoSyncOnProductUpdate, setAutoSyncOnProductUpdate] = useState(
@@ -217,9 +240,9 @@ export default function SettingsStudioRoute() {
   const liveMeta = useMemo(
     () =>
       generateMeta(selectedProduct, liveStoreContext, {
-        metaTitleTemplate,
-        metaDescriptionTemplate,
-        imageAltTemplate,
+        metaTitleTemplate: toDbTemplate(metaTitleTemplate),
+        metaDescriptionTemplate: toDbTemplate(metaDescriptionTemplate),
+        imageAltTemplate: toDbTemplate(imageAltTemplate),
       }),
     [
       selectedProduct,
@@ -231,17 +254,18 @@ export default function SettingsStudioRoute() {
   );
 
   const liveAltPreview = useMemo(() => {
+    const dbAlt = toDbTemplate(imageAltTemplate);
     const alts = generateAltTexts(
       selectedProduct,
       liveStoreContext,
-      imageAltTemplate,
+      dbAlt,
     );
     return (
       alts[0]?.alt ||
       generateMeta(selectedProduct, liveStoreContext, {
-        metaTitleTemplate: imageAltTemplate,
-        metaDescriptionTemplate,
-        imageAltTemplate,
+        metaTitleTemplate: dbAlt,
+        metaDescriptionTemplate: toDbTemplate(metaDescriptionTemplate),
+        imageAltTemplate: dbAlt,
       }).title
     );
   }, [
@@ -409,15 +433,15 @@ export default function SettingsStudioRoute() {
                 Click any tag to insert into your text:
               </div>
               <div className="pico-chip-row" style={{ marginTop: 0 }}>
-                {VARIABLE_CHIPS.map((chip) => (
+                {TOKEN_PAIRS.map((chip) => (
                   <button
-                    key={chip.token}
+                    key={chip.display}
                     type="button"
-                    onClick={() => insertTokenIntoField(chip.token)}
+                    onClick={() => insertTokenIntoField(chip.display)}
                     className="pico-token-chip"
                   >
                     <PlusChipIcon size={12} />
-                    <span>{chip.label.replace(/^\+\s*/, "")}</span>
+                    <span>{chip.display}</span>
                   </button>
                 ))}
               </div>
@@ -580,6 +604,7 @@ export default function SettingsStudioRoute() {
                   onChange: setEnableJsonLdSchema,
                   title: "Google Rich Results (Price, Stock & Star Badges)",
                   desc: "Shows your product price and In-Stock status directly inside Google search results.",
+                  icon: <GlobeSearchIcon size={18} />,
                 },
                 {
                   name: "enableLcpImagePreload",
@@ -587,6 +612,7 @@ export default function SettingsStudioRoute() {
                   onChange: setEnableLcpImagePreload,
                   title: "Instant Product Photo Speed Boost",
                   desc: "Preloads your main product photo so pages open faster on mobile and desktop.",
+                  icon: <GaugeSpeedIcon size={18} />,
                 },
                 {
                   name: "enableLlmsTxtFeed",
@@ -594,6 +620,7 @@ export default function SettingsStudioRoute() {
                   onChange: setEnableLlmsTxtFeed,
                   title: "ChatGPT & Perplexity Shopping Visibility",
                   desc: "Helps AI shopping assistants find, understand, and recommend your products to buyers.",
+                  icon: <BotCitationIcon size={18} />,
                 },
                 {
                   name: "enableIndexNowPing",
@@ -601,6 +628,7 @@ export default function SettingsStudioRoute() {
                   onChange: setEnableIndexNowPing,
                   title: "Instant Search Engine Ping",
                   desc: "Notifies search engines immediately whenever you update a price or product.",
+                  icon: <RadarIcon size={18} />,
                 },
                 {
                   name: "autoSyncOnProductUpdate",
@@ -608,63 +636,61 @@ export default function SettingsStudioRoute() {
                   onChange: setAutoSyncOnProductUpdate,
                   title: "Auto-Optimize New Products",
                   desc: "Automatically writes missing Google titles and photo descriptions whenever you add a new product.",
+                  icon: <CheckCircleIcon size={18} />,
                 },
               ].map((toggle) => (
-                <label
+                <div
                   key={toggle.name}
                   style={{
                     display: "flex",
-                    alignItems: "flex-start",
+                    alignItems: "center",
                     justifyContent: "space-between",
                     gap: 14,
                     padding: "12px 14px",
                     borderRadius: 12,
                     border: "1px solid #e2e8f0",
                     background: toggle.checked ? "#f8fafc" : "#ffffff",
-                    cursor: "pointer",
+                    transition:
+                      "background-color 200ms ease, border-color 200ms ease",
                   }}
                 >
-                  <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        fontSize: 13.5,
-                        fontWeight: 600,
-                        color: "#0f172a",
-                      }}
-                    >
-                      <LiveStatusDot
-                        tone={toggle.checked ? "live" : "muted"}
-                      />
-                      <span>{toggle.title}</span>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12.5,
-                        color: "#64748b",
-                        marginTop: 3,
-                        paddingLeft: 16,
-                      }}
-                    >
-                      {toggle.desc}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      minWidth: 0,
+                    }}
+                  >
+                    <span className="pico-icon-badge">{toggle.icon}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13.5,
+                          fontWeight: 600,
+                          color: "#0f172a",
+                        }}
+                      >
+                        {toggle.title}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12.5,
+                          color: "#64748b",
+                          marginTop: 2,
+                        }}
+                      >
+                        {toggle.desc}
+                      </div>
                     </div>
                   </div>
-                  <input
-                    type="checkbox"
+                  <WatermelonToggle
                     name={toggle.name}
                     checked={toggle.checked}
-                    onChange={(e) => toggle.onChange(e.target.checked)}
-                    style={{
-                      width: 18,
-                      height: 18,
-                      marginTop: 2,
-                      accentColor: "#2563eb",
-                      cursor: "pointer",
-                    }}
+                    onChange={toggle.onChange}
+                    ariaLabel={toggle.title}
                   />
-                </label>
+                </div>
               ))}
             </div>
 
@@ -679,11 +705,17 @@ export default function SettingsStudioRoute() {
               <button
                 type="button"
                 onClick={() => {
-                  setMetaTitleTemplate(DEFAULT_TEMPLATES.metaTitleTemplate);
-                  setMetaDescriptionTemplate(
-                    DEFAULT_TEMPLATES.metaDescriptionTemplate,
+                  setMetaTitleTemplate(
+                    toDisplayTemplate(DEFAULT_TEMPLATES.metaTitleTemplate),
                   );
-                  setImageAltTemplate(DEFAULT_TEMPLATES.imageAltTemplate);
+                  setMetaDescriptionTemplate(
+                    toDisplayTemplate(
+                      DEFAULT_TEMPLATES.metaDescriptionTemplate,
+                    ),
+                  );
+                  setImageAltTemplate(
+                    toDisplayTemplate(DEFAULT_TEMPLATES.imageAltTemplate),
+                  );
                 }}
                 className="pico-btn pico-btn--secondary"
               >
@@ -694,7 +726,7 @@ export default function SettingsStudioRoute() {
                 disabled={isSaving}
                 className="pico-btn pico-btn--primary"
               >
-                <SparklesIcon size={15} />
+                <CheckIcon size={15} />
                 <span>{isSaving ? "Saving…" : "Save Rules & Boosters"}</span>
               </button>
             </div>

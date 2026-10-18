@@ -11,8 +11,8 @@ import {
 import { TitleBar } from "@shopify/app-bridge-react";
 import {
   CheckCircleIcon,
+  CheckIcon,
   ShieldCheckIcon,
-  SparklesIcon,
 } from "../components/icons";
 import {
   cancelProSubscription,
@@ -138,20 +138,7 @@ export default function BillingRoute() {
           }}
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-            <span
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 10,
-                background: "#2563eb",
-                color: "#ffffff",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                marginTop: 1,
-              }}
-            >
+            <span className="pico-icon-badge">
               <ShieldCheckIcon size={18} />
             </span>
             <div>
@@ -375,7 +362,7 @@ export default function BillingRoute() {
               disabled={isSubmitting}
               className="pico-billing-cta"
             >
-              <SparklesIcon size={18} />
+              <CheckIcon size={18} />
               <span>
                 {isSubmitting
                   ? "Connecting to Shopify Billing…"
