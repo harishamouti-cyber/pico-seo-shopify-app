@@ -323,7 +323,7 @@ export default function SettingsStudioRoute() {
 
   return (
     <div className="pico-shell">
-      <TitleBar title="Automation Studio & Live SERP Customizer" />
+      <TitleBar title="Templates" />
 
       {actionData?.message && (
         <div
@@ -351,7 +351,7 @@ export default function SettingsStudioRoute() {
             <CheckCircleIcon size={17} />
             <span>{actionData.message}</span>
           </div>
-          <span className="pico-pill pico-pill--success">Live</span>
+          <span className="pico-pill pico-pill--success">Saved</span>
         </div>
       )}
 
@@ -643,21 +643,21 @@ export default function SettingsStudioRoute() {
                   checked: enableJsonLdSchema,
                   onChange: setEnableJsonLdSchema,
                   title: "JSON-LD Schema Injection (Product, Offer, Brand & FAQPage)",
-                  desc: "Injects structured data into the document head for Google Rich Results and AI answer engines.",
+                  desc: "Adds Product, Offer, Brand, and FAQ JSON-LD from the theme embed. Saving this does not confirm a Google rich result.",
                 },
                 {
                   name: "enableLcpImagePreload",
                   checked: enableLcpImagePreload,
                   onChange: setEnableLcpImagePreload,
-                  title: "LCP Hero Image Preloading (Core Web Vitals)",
-                  desc: 'Injects <link rel="preload" as="image" fetchpriority="high"> with responsive srcset on product pages.',
+                  title: "Product image preload",
+                  desc: 'Adds <link rel="preload" as="image" fetchpriority="high"> on product pages when the theme embed is enabled. This app does not measure Largest Contentful Paint.',
                 },
                 {
                   name: "enableLlmsTxtFeed",
                   checked: enableLlmsTxtFeed,
                   onChange: setEnableLlmsTxtFeed,
                   title: "Automated /llms.txt AI Crawler Feed",
-                  desc: "Publishes a structured Markdown catalog summary for ChatGPT, Perplexity, and Claude citations.",
+                  desc: "Publishes a Markdown file of active products from the latest 50-product scan. It does not guarantee that any assistant will cite them.",
                 },
                 {
                   name: "enableIndexNowPing",
@@ -836,7 +836,7 @@ export default function SettingsStudioRoute() {
                     color: "#0f172a",
                   }}
                 >
-                  Live Search & AI Citation Preview
+                  Template preview
                 </h2>
                 <p
                   style={{
@@ -845,7 +845,7 @@ export default function SettingsStudioRoute() {
                     color: "#64748b",
                   }}
                 >
-                  Real-time token resolution against your store catalog.
+                  Shows how the templates resolve for the product below. This is not a live Google result or an assistant citation.
                 </p>
               </div>
 
@@ -913,7 +913,7 @@ export default function SettingsStudioRoute() {
                   },
                   {
                     value: "ai",
-                    label: "AI Answer Engine Citation View (ChatGPT / Perplexity)",
+                    label: "Markdown excerpt",
                     icon: <BotCitationIcon size={14} />,
                   },
                   {
@@ -1148,7 +1148,7 @@ export default function SettingsStudioRoute() {
                     >
                       <span className="pico-pill pico-pill--blue">
                         <BotCitationIcon size={13} />
-                        AI Answer Engine Citation
+                        Markdown excerpt
                       </span>
                       <span
                         style={{
@@ -1156,7 +1156,7 @@ export default function SettingsStudioRoute() {
                           color: "#64748b",
                         }}
                       >
-                        Powered by JSON-LD + /llms.txt
+                        Preview only. Not a search result.
                       </span>
                     </div>
 

@@ -6,10 +6,9 @@ export const META_DESCRIPTION_MIN = 70;
 export const META_DESCRIPTION_MAX = 160;
 
 export const DEFAULT_TEMPLATES: SeoTemplates = {
-  metaTitleTemplate: "{{product_title}} | Official {{store_name}}",
-  metaDescriptionTemplate:
-    "Shop {{product_title}} ({{variant_title}}) for {{price}} at {{store_name}}. Fast shipping and verified quality.",
-  imageAltTemplate: "{{product_title}} - {{variant_title}} by {{store_name}}",
+  metaTitleTemplate: "{{product_title}} | {{store_name}}",
+  metaDescriptionTemplate: "{{product_title}} from {{store_name}}. {{product_type}}",
+  imageAltTemplate: "{{product_title}} - {{variant_title}}",
 };
 
 export function extractTemplates(settings: SeoTemplates): SeoTemplates {

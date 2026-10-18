@@ -17,9 +17,9 @@ export function indexNowKeyLocation(host: string, key: string) {
 }
 
 /**
- * Submits URLs to the shared IndexNow endpoint, which fans out to Bing,
- * Yandex, Seznam, Naver, Yep and every other participating engine — and to
- * the AI answer engines that consume Bing's index (ChatGPT search, Copilot).
+ * POSTs URLs to https://api.indexnow.org/indexnow. A 200 or 202 means that
+ * endpoint accepted the request. This app does not confirm which engines
+ * indexed the URLs.
  */
 export async function pingIndexNow(host: string, key: string, urls: string[]): Promise<IndexNowResult> {
   const urlList = Array.from(new Set(urls)).slice(0, 10_000);

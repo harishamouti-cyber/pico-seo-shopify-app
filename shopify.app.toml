@@ -18,12 +18,11 @@ embedded = true
 automatically_update_urls_on_dev = true
 
 [access_scopes]
-# Products: catalog audit + SEO/alt-text writes
-# Themes: detect app-embed activation in the live theme
-# Content: storefront content + app-owned metafield config
+# Products: catalog audit + SEO field writes
+# Themes (read): look up the published theme name for the editor link
 # Files: alt-text updates on product MediaImage nodes (fileUpdate)
 # Navigation: /llms.txt and IndexNow key URL redirects
-scopes = "read_products,write_products,read_themes,write_themes,read_content,write_content,read_files,write_files,read_online_store_navigation,write_online_store_navigation"
+scopes = "read_products,write_products,read_themes,read_files,write_files,read_online_store_navigation,write_online_store_navigation"
 
 [auth]
 redirect_urls = [

@@ -17,6 +17,7 @@ import {
 import {
   cancelProSubscription,
   createProSubscription,
+  isBillingTestCharge,
   PICOSEO_PLAN,
   syncSubscriptionStatus,
 } from "../services/billing.server";
@@ -35,6 +36,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     plan: PICOSEO_PLAN,
     subscriptionStatus: billing.status,
     activeSubscription: billing.activeSubscription,
+    billingTest: isBillingTestCharge(),
   });
 };
 
@@ -61,7 +63,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         ok: true,
         confirmationUrl: null,
         message:
-          "Your PicoSEO Pro subscription has been cancelled. You will not be billed again.",
+          "Shopify accepted the cancellation. This page shows Inactive once Shopify no longer reports an active subscription. A billing period that was already paid can still run until it ends.",
       });
     }
 
@@ -92,18 +94,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 const PRO_FEATURES = [
-  "Unlimited 1-Click Bulk SEO Title & Meta Description Optimization",
-  "Unlimited Automated Media Image Alt-Text Repair across all variants",
-  "Zero-JavaScript Liquid JSON-LD Schema (Product, Offer, Brand & FAQPage)",
-  "Core Web Vitals LCP Hero Image Preloading (0.0 kB client script bloat)",
-  "Automated /llms.txt AI Crawler Feed for ChatGPT, Perplexity & Claude",
-  "Real-Time IndexNow Search Engine Pings on every product update",
-  "Live SERP, AI Citation & Mobile/Desktop Bezel Customizer Studio",
-  "Interactive Live SEO & Speed Diagnostic Simulator with Schema Validator",
+  "Fill missing SEO titles and meta descriptions on the latest 50 updated products per run",
+  "Fill missing descriptive alt text on media included in that same scan",
+  "Theme app embed for Product and Offer JSON-LD, with no app JavaScript",
+  "Optional preload of the product image in the theme head",
+  "A /llms.txt file for active products in that 50-product scan",
+  "IndexNow request when PicoSEO updates a product and a key file is configured",
+  "Previews of generated titles, descriptions, and JSON-LD. These are not measured speed tests",
 ] as const;
 
 export default function BillingRoute() {
-  const { plan, subscriptionStatus, activeSubscription } =
+  const { plan, subscriptionStatus, activeSubscription, billingTest } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
@@ -162,7 +163,7 @@ export default function BillingRoute() {
                   color: "#0f172a",
                 }}
               >
-                100% Native Shopify Billing • Risk-Free 7-Day Free Trial
+                Shopify Billing · 7-day trial
               </div>
               <p
                 style={{
@@ -172,11 +173,15 @@ export default function BillingRoute() {
                   color: "#334155",
                 }}
               >
-                All subscription charges are processed natively through
-                Shopify’s secure billing system (`appSubscriptionCreate`). You
-                will never enter a credit card inside PicoSEO, and you can
-                cancel in one click at any time during your 7-day free trial
-                with zero charge.
+                Charges are approved in Shopify Admin. PicoSEO does not collect
+                a card number. The trial is {plan.trialDays} days. After you
+                approve, Shopify bills {plan.priceAmount} {plan.currencyCode}{" "}
+                every 30 days until you cancel. Cancelling during the trial
+                avoids the first charge only if Shopify has not already billed
+                the subscription.
+                {billingTest
+                  ? " This environment is creating Shopify test charges. Test charges do not bill the merchant."
+                  : ""}
               </p>
             </div>
           </div>
@@ -205,7 +210,9 @@ export default function BillingRoute() {
               <CheckCircleIcon size={17} />
               <span>
                 {actionData?.message ||
-                  "Your PicoSEO Pro subscription is active and synced with Shopify Billing."}
+                  (isSubscribed
+                    ? `Shopify currently reports this subscription as ${subscriptionStatus}.`
+                    : "Shopify sent you back from the charge screen. The status below is what Shopify reports right now. Reload if it has not updated.")}
               </span>
             </div>
             <span className="pico-pill pico-pill--success">

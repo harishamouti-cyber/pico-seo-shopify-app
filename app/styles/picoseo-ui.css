@@ -167,6 +167,12 @@
   animation: picoPulseGlow 2.4s infinite ease-in-out;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .pico-status-dot--live {
+    animation: none;
+  }
+}
+
 .pico-status-dot--amber {
   background: var(--pico-amber);
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);

@@ -1,29 +1,29 @@
-# PicoSEO — Zero-Bloat Shopify SEO, JSON-LD, IndexNow & `/llms.txt` AI Feed
+# PicoSEO — Shopify catalog SEO, JSON-LD, IndexNow, and `/llms.txt`
 
-**PicoSEO** is a zero-bloat Shopify application built with **Remix**, **Prisma/PostgreSQL**, **Shopify Admin GraphQL (`2025-10`)**, and a **100% Liquid Theme App Extension** (`0.0 kB` client-side JavaScript).
+**PicoSEO** is a Shopify admin app built with **Remix**, **Prisma/PostgreSQL**, **Shopify Admin GraphQL (`2025-10`)**, and a Liquid theme app extension. The embed adds JSON-LD and an optional image preload. It does not add its own client-side JavaScript file. It does not measure Core Web Vitals or search rankings.
 
 ## Core Capabilities
 
 1. **Resilient GraphQL Catalog Auditor & 1-Click Bulk Fixer**
-   - Audits up to 50 recently updated products via the Shopify Admin GraphQL API without restrictive status filters.
+   - Audits the 50 most recently updated products via the Shopify Admin GraphQL API. It does not page through the whole catalog.
    - Traverses `featuredImage`, `MediaImage` nodes, and variant images with `width=300` CDN transforms and `object-fit: contain` rendering.
-   - Computes a deterministic `0–100` **SEO & AI Readiness Score** and repairs missing SEO titles, meta descriptions, and media alt texts in 1 click (per-product or bulk).
+   - Computes a deterministic `0–100` score from SEO title, meta description, image alt text, and product detail fields. It fills missing SEO titles, meta descriptions, and weak image alt text. An explicit replace overwrites those fields.
    - Refreshes the loaded audit on demand and exports the currently filtered products to a spreadsheet-safe CSV.
    - Leaves healthy products untouched unless overwrite is explicitly requested, and reports partial bulk failures.
-2. **Zero-JavaScript Liquid JSON-LD Schema & Core Web Vitals LCP Preload**
-   - Theme App Extension (`extensions/picoseo-schema/blocks/picoseo-head.liquid`) injects `Product`, `Offer`, `Brand`, and Conversational `FAQPage` JSON-LD plus `<link rel="preload" as="image" fetchpriority="high">` into `<head>` with zero client-side JS.
-3. **Automated AI Crawler Feed (`/llms.txt`)**
-   - App Proxy route (`/apps/picoseo/llms.txt` redirected from `/llms.txt`) outputs a structured Markdown catalog summary for ChatGPT, Perplexity, and Claude product citations.
-4. **Instant IndexNow Search Engine Pinger**
-   - Automatically pings `https://api.indexnow.org/indexnow` on `products/update` webhooks and manual 1-click optimizations.
+2. **Liquid JSON-LD and optional image preload**
+   - Theme app extension (`extensions/picoseo-schema/blocks/picoseo-head.liquid`) can add `Product`, `Offer`, `Brand`, and FAQ JSON-LD plus `<link rel="preload" as="image" fetchpriority="high">` in `<head>`. The app does not check whether the merchant has enabled the embed.
+3. **Optional `/llms.txt` file**
+   - The app proxy route (`/apps/picoseo/llms.txt`) returns a Markdown list of active products from the latest 50-product scan. Publishing it does not mean an assistant will cite the products.
+4. **IndexNow ping**
+   - Can POST to `https://api.indexnow.org/indexnow` after a product update webhook or a manual action. An HTTP 200 or 202 means the endpoint accepted the request. It does not confirm indexing.
 5. **Wide Centered Native Shopify Billing (`/app/billing`)**
    - Single-tier **PicoSEO Pro** subscription with a 7-day free trial powered natively by `appSubscriptionCreate`.
 
 ## Built-for-Shopify Admin Routes
 
-- `/app` — **SEO & AI Overview**: Live system health bar, dismissible Theme Editor deep-link onboarding banner, Store SEO & AI Readiness Score hero gauge, 3 KPI tiles, interactive Product SEO Audit Table, and Partner Revenue Suite footer.
-- `/app/settings` — **Automation Studio & Live SERP Customizer**: Two-column split layout with clickable dynamic token chips and a sticky live preview switching between Google Search Snippet, AI Answer Engine Citation, and raw `/llms.txt` views across Desktop and Mobile bezels.
-- `/app/simulator` — **Live SEO & Speed Simulator**: Interactive diagnostic sandbox inspecting resolved meta tags, generated media alt texts, JSON-LD schema payload, simulated Core Web Vitals impact, and a 1-click **Run Live IndexNow & Schema Test** action.
+- `/app` — **SEO overview**: settings status, theme-editor link, scan score, and a product table. The score is the average of this scan. It is not a live storefront or ranking measurement.
+- `/app/settings` — **Templates**: edit SEO title, description, and alt templates, and preview how they resolve for one product. The preview is not a live search result.
+- `/app/simulator` — **Schema preview**: inspect resolved meta tags, alt text, and JSON-LD for one product, and optionally send an IndexNow ping.
 - `/app/billing` — **Subscription & Billing**: Centered `800px` single-tier **PicoSEO Pro** card with native Shopify billing.
 
 ## Vercel Production Deployment

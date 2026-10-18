@@ -55,7 +55,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({
       ok: true,
       intent,
-      message: `Applied resolved meta tags & ${result.altTextsUpdatedCount} alt text(s) to "${result.productTitle}" (${result.seoScoreBefore} → ${result.seoScoreAfter}/100).`,
+      message: `Replaced the SEO title, meta description, and alt text on "${result.productTitle}" (${result.seoScoreBefore} → ${result.seoScoreAfter}/100).`,
       testReport: null,
     });
   }
@@ -82,9 +82,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const store = toStoreContext(shopInfo, settings);
     const canonicalUrl = productUrl(product, store);
-    const key = settings.indexNowApiKey || "unconfigured";
+    if (!settings.indexNowApiKey) {
+      return json({
+        ok: false,
+        intent,
+        message:
+          "IndexNow has no key for this shop yet. Open the app once so PicoSEO can create one, then try again.",
+        testReport: null,
+      });
+    }
+    const key = settings.indexNowApiKey;
     const ping = await pingIndexNow(store.host, key, [canonicalUrl]);
-    const latencyMs = Math.max(12, Date.now() - startedAt);
+    const latencyMs = Date.now() - startedAt;
 
     if (ping.ok) {
       await prisma.picoSeoSettings.update({
@@ -99,7 +108,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({
       ok: true,
       intent,
-      message: `Live IndexNow & Schema test completed in ${latencyMs} ms.`,
+      message: ping.ok
+        ? `IndexNow accepted the request (HTTP ${ping.status ?? "ok"}) in ${latencyMs} ms. That is not proof the page is indexed. The schema checks are local field checks, not a Google rich-result test.`
+        : `IndexNow did not accept the request (${ping.message}). Elapsed ${latencyMs} ms.`,
       testReport: {
         testedAt: new Date().toISOString(),
         productTitle: product.title,
@@ -205,7 +216,7 @@ export default function SimulatorRoute() {
 
   return (
     <div className="pico-shell">
-      <TitleBar title="Live SEO & Speed Simulator" />
+      <TitleBar title="Schema preview" />
 
       {/* Top Control Bar */}
       <section className="pico-bento-card pico-bento-card--hero">
@@ -243,7 +254,7 @@ export default function SimulatorRoute() {
                 color: "#0f172a",
               }}
             >
-              Live SEO, JSON-LD & Core Web Vitals Simulator
+              Schema preview
             </h1>
             <p
               style={{
@@ -252,9 +263,9 @@ export default function SimulatorRoute() {
                 color: "#475569",
               }}
             >
-              Select any product from your live catalog to inspect resolved meta
-              tags, generated media alt text, Schema.org payload, and simulated
-              Core Web Vitals impact.
+              Select a product from this scan to inspect the SEO fields, alt
+              text, and JSON-LD this app would write. It does not measure page
+              speed or rankings.
             </p>
           </div>
 
@@ -297,7 +308,7 @@ export default function SimulatorRoute() {
                   <span>
                     {isRunningTest
                       ? "Running live test…"
-                      : "Run Live IndexNow & Schema Test"}
+                      : "Send IndexNow ping"}
                   </span>
                 </button>
               </fetcher.Form>
@@ -415,8 +426,8 @@ export default function SimulatorRoute() {
           className="pico-bento-card"
           style={{ marginTop: 16, textAlign: "center", padding: 36 }}
         >
-          Add at least one product in Shopify Admin to run the Live SEO & Speed
-          Simulator.
+          Add at least one product in Shopify Admin to preview schema for this
+          scan.
         </div>
       ) : (
         <div
@@ -475,7 +486,7 @@ export default function SimulatorRoute() {
                 >
                   <SparklesIcon size={14} />
                   <span>
-                    {isApplying ? "Writing…" : "Write to Product in 1 Click"}
+                    {isApplying ? "Writing…" : "Replace this product's SEO fields"}
                   </span>
                 </button>
               </fetcher.Form>
@@ -568,7 +579,7 @@ export default function SimulatorRoute() {
                       ? `<link rel="preload" as="image" href="${selectedProduct.primaryImageUrl}" fetchpriority="high">`
                       : null,
                     audit.settings.enableLlmsTxtFeed
-                      ? `<link rel="alternate" type="text/plain" title="${audit.store.storeName} AI Catalog (llms.txt)" href="https://${audit.store.host}/llms.txt">`
+                      ? `<link rel="alternate" type="text/plain" title="${audit.store.storeName} product list (llms.txt)" href="https://${audit.store.host}/llms.txt">`
                       : null,
                   ]
                     .filter(Boolean)
@@ -612,11 +623,11 @@ export default function SimulatorRoute() {
                       color: "#0f172a",
                     }}
                   >
-                    Simulated Core Web Vitals Impact
+                    What this embed adds
                   </h2>
                   <div style={{ fontSize: 12, color: "#64748b" }}>
-                    Zero-JavaScript Liquid compilation vs. legacy script-tag SEO
-                    apps
+                    These notes describe the theme embed. They are not a
+                    Lighthouse or Core Web Vitals measurement.
                   </div>
                 </div>
               </div>
@@ -652,11 +663,12 @@ export default function SimulatorRoute() {
                     marginTop: 4,
                   }}
                 >
-                  -380 ms faster
+                  Not measured
                 </div>
                 <div style={{ fontSize: 11.5, color: "#475569", marginTop: 4 }}>
-                  Hero image discovered in initial HTML via{" "}
-                  <code>fetchpriority="high"</code> preload.
+                  The embed can preload the product image with{" "}
+                  <code>fetchpriority=&quot;high&quot;</code>. PicoSEO does not
+                  report a faster LCP time.
                 </div>
               </div>
 
@@ -683,8 +695,8 @@ export default function SimulatorRoute() {
                   0.0 kB
                 </div>
                 <div style={{ fontSize: 11.5, color: "#475569", marginTop: 4 }}>
-                  100% server-rendered Shopify Liquid. Zero main-thread blocking
-                  (INP = 0 ms).
+                  The PicoSEO embed does not add its own JavaScript file. That
+                  does not set the page Interaction to Next Paint to 0 ms.
                 </div>
               </div>
 
@@ -926,7 +938,7 @@ export default function SimulatorRoute() {
                     color: "#0f172a",
                   }}
                 >
-                  Live JSON-LD Schema Payload (Product + FAQPage)
+                  JSON-LD from this product
                 </h2>
               </div>
               <button

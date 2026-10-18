@@ -5,7 +5,6 @@ import { Link, useFetcher, useLoaderData, useRevalidator } from "@remix-run/reac
 import { TitleBar } from "@shopify/app-bridge-react";
 import {
   LiveStatusDot,
-  PartnerSuiteFooter,
   ProductThumbnail,
   RadialScoreGauge,
   ScoreBadge,
@@ -76,7 +75,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return json({
         ok: summary.failedCount === 0,
         intent,
-        message: `Optimized ${summary.optimizedCount} product(s), repaired ${summary.altTextsFixed} alt text(s), average score ${summary.averageScoreAfter}/100.${summary.failedCount ? ` ${summary.failedCount} product(s) failed; refresh the audit before retrying.` : ""}`,
+        message:
+          summary.optimizedCount === 0
+            ? `No products in this scan were missing an SEO title, meta description, or descriptive alt text. Existing copy was left unchanged.${summary.failedCount ? ` ${summary.failedCount} product(s) failed; refresh the audit before retrying.` : ""}`
+            : `Filled missing fields on ${summary.optimizedCount} product(s) and updated ${summary.altTextsFixed} alt text(s). Average score after those updates: ${summary.averageScoreAfter}/100. This scan covers the latest 50 updated products.${summary.failedCount ? ` ${summary.failedCount} product(s) failed; refresh the audit before retrying.` : ""}`,
         summary,
       });
     }
@@ -159,10 +161,10 @@ export default function SeoOverviewRoute() {
         100,
     );
     return [
-      { label: "SEO title coverage", pct: audit.products.length ? titleAvg : 100 },
-      { label: "Meta description quality", pct: audit.products.length ? descAvg : 100 },
-      { label: "Media alt-text completeness", pct: audit.products.length ? altAvg : 100 },
-      { label: "AI citation & schema depth", pct: audit.products.length ? richAvg : 100 },
+      { label: "SEO title coverage", pct: audit.products.length ? titleAvg : 0 },
+      { label: "Meta description quality", pct: audit.products.length ? descAvg : 0 },
+      { label: "Media alt-text completeness", pct: audit.products.length ? altAvg : 0 },
+      { label: "Product detail completeness", pct: audit.products.length ? richAvg : 0 },
     ];
   }, [audit.products]);
 
@@ -201,45 +203,33 @@ export default function SeoOverviewRoute() {
 
   return (
     <div className="pico-shell">
-      <TitleBar title="SEO & AI Overview" />
+      <TitleBar title="SEO overview" />
 
       {/* 1. Live System Health Bar */}
       <div className="pico-health-bar">
         <div className="pico-health-pills">
           <span className="pico-health-pill">
-            <LiveStatusDot
-              tone={audit.settings.enableJsonLdSchema ? "live" : "muted"}
-            />
-            Zero-JS JSON-LD Schema:{" "}
+            <LiveStatusDot tone="muted" />
+            JSON-LD setting:{" "}
+            <strong>{audit.settings.enableJsonLdSchema ? "On" : "Off"}</strong>
+          </span>
+          <span className="pico-health-pill">
+            <LiveStatusDot tone="muted" />
+            LCP preload setting:{" "}
             <strong>
-              {audit.settings.enableJsonLdSchema ? "Active" : "Paused"}
+              {audit.settings.enableLcpImagePreload ? "On" : "Off"}
             </strong>
           </span>
           <span className="pico-health-pill">
-            <LiveStatusDot
-              tone={audit.settings.enableLcpImagePreload ? "live" : "muted"}
-            />
-            LCP Image Preload:{" "}
-            <strong>
-              {audit.settings.enableLcpImagePreload ? "Active" : "Paused"}
-            </strong>
+            <LiveStatusDot tone="muted" />
+            /llms.txt setting:{" "}
+            <strong>{audit.settings.enableLlmsTxtFeed ? "On" : "Off"}</strong>
           </span>
           <span className="pico-health-pill">
-            <LiveStatusDot
-              tone={audit.settings.enableLlmsTxtFeed ? "live" : "muted"}
-            />
-            /llms.txt AI Feed:{" "}
+            <LiveStatusDot tone="muted" />
+            IndexNow setting:{" "}
             <strong>
-              {audit.settings.enableLlmsTxtFeed ? "Live" : "Paused"}
-            </strong>
-          </span>
-          <span className="pico-health-pill">
-            <LiveStatusDot
-              tone={audit.settings.enableIndexNowPing ? "live" : "amber"}
-            />
-            IndexNow Pinger:{" "}
-            <strong>
-              {audit.settings.enableIndexNowPing ? "Connected" : "Paused"}
+              {audit.settings.enableIndexNowPing ? "On" : "Off"}
             </strong>
           </span>
         </div>
@@ -262,6 +252,60 @@ export default function SeoOverviewRoute() {
           </Link>
         </div>
       </div>
+
+      {audit.settingsUnavailable && (
+        <div
+          className="pico-bento-card"
+          role="alert"
+          style={{
+            marginBottom: 16,
+            padding: "12px 18px",
+            borderColor: "#fecaca",
+            background: "#fef2f2",
+            color: "#991b1b",
+            fontSize: 13,
+          }}
+        >
+          Settings could not be loaded. The plan shown here is not a live
+          subscription. Check the database connection, then reload.
+        </div>
+      )}
+
+      {audit.catalogError && (
+        <div
+          className="pico-bento-card"
+          role="alert"
+          style={{
+            marginBottom: 16,
+            padding: "12px 18px",
+            borderColor: "#fecaca",
+            background: "#fef2f2",
+            color: "#991b1b",
+            fontSize: 13,
+          }}
+        >
+          Shopify did not return the catalog: {audit.catalogError} Reload the
+          page. If this keeps happening, confirm the app still has product
+          access in Shopify Admin.
+        </div>
+      )}
+
+      {!audit.catalogError && audit.products.length === 0 && (
+        <div
+          className="pico-bento-card"
+          style={{
+            marginBottom: 16,
+            padding: "12px 18px",
+            borderColor: "#fde68a",
+            background: "#fffbeb",
+            color: "#92400e",
+            fontSize: 13,
+          }}
+        >
+          This scan returned no products. Add a product in Shopify, or confirm
+          the app can read products, then reload.
+        </div>
+      )}
 
       {/* 2. Dismissible Theme Editor Deep-Link Onboarding Banner */}
       {!bannerDismissed && (
@@ -308,7 +352,7 @@ export default function SeoOverviewRoute() {
                     color: "#0f172a",
                   }}
                 >
-                  Enable Zero-JS Schema & LCP Preload in {themeEmbed.themeName}
+                  Turn on the PicoSEO head embed in {themeEmbed.themeName}
                 </div>
                 <div
                   style={{
@@ -317,9 +361,10 @@ export default function SeoOverviewRoute() {
                     marginTop: 2,
                   }}
                 >
-                  Activate the PicoSEO head embed in 1 click to inject Schema.org
-                  Product, Offer, Brand & FAQ JSON-LD plus LCP hero image
-                  preloading with 0.0 kB of JavaScript.
+                  Open the theme editor, enable the PicoSEO embed, and save.
+                  This screen does not check whether the embed is already on.
+                  The embed adds product JSON-LD and an optional image preload.
+                  It does not add app JavaScript.
                 </div>
               </div>
             </div>
@@ -423,7 +468,7 @@ export default function SeoOverviewRoute() {
                     color: "#0f172a",
                   }}
                 >
-                  Store SEO & AI Readiness Score
+                  SEO score for this scan
                 </h1>
                 <p
                   style={{
@@ -432,12 +477,13 @@ export default function SeoOverviewRoute() {
                     color: "#475569",
                   }}
                 >
-                  Real-time audit across{" "}
+                  Average of the{" "}
                   <strong className="pico-tabular">
                     {audit.products.length}
                   </strong>{" "}
-                  catalog products for Google Search snippets, Core Web Vitals
-                  LCP, and AI citations (ChatGPT, Perplexity, Claude).
+                  most recently updated products (limit {audit.scannedLimit}).
+                  This is not the whole catalog and it does not measure Core
+                  Web Vitals or search rankings.
                 </p>
               </div>
 
@@ -446,16 +492,20 @@ export default function SeoOverviewRoute() {
                   <input type="hidden" name="intent" value="bulk_optimize" />
                   <button
                     type="submit"
-                    disabled={isBulkRunning || audit.products.length === 0}
+                    disabled={
+                      isBulkRunning ||
+                      audit.productsNeedingFix === 0 ||
+                      Boolean(audit.catalogError)
+                    }
                     className="pico-btn pico-btn--primary"
                   >
                     <SparklesIcon size={16} />
                     <span>
                       {isBulkRunning
-                        ? "Optimizing catalog…"
+                        ? "Updating products…"
                         : audit.productsNeedingFix > 0
-                          ? `Fix All Products in 1 Click (${audit.productsNeedingFix})`
-                          : "Fix All Products in 1 Click"}
+                          ? `Fill missing fields (${audit.productsNeedingFix})`
+                          : "No missing fields in this scan"}
                     </span>
                   </button>
                 </bulkFetcher.Form>
@@ -677,7 +727,7 @@ export default function SeoOverviewRoute() {
             {audit.settings.totalIndexNowPings}
           </div>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
-            Real-time Bing, Yandex, Naver & ChatGPT Search indexation
+            IndexNow requests this app has sent. Delivery is not confirmed here.
           </div>
         </div>
       </section>
@@ -1039,7 +1089,7 @@ export default function SeoOverviewRoute() {
       )}
 
       {/* 6. Complete Your Store Revenue Suite Partner Footer */}
-      <PartnerSuiteFooter />
+
     </div>
   );
 }

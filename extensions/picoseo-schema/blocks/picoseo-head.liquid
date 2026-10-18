@@ -2,11 +2,10 @@
   PicoSEO — Zero-JavaScript Storefront Head Embed
   ------------------------------------------------
   100% server-rendered Shopify Liquid. Zero client-side JS (0.0 kB script payload).
-  - Preloads the primary product hero image with fetchpriority="high" to accelerate
-    Core Web Vitals Largest Contentful Paint (LCP).
-  - Injects Schema.org Product, Offer, Brand, and Conversational FAQPage JSON-LD
-    so Google Rich Results and AI Answer Engines (ChatGPT, Perplexity, Claude)
-    index accurate pricing, stock state, and brand authority.
+  - Can preload the primary product image with fetchpriority="high".
+    That is not a Core Web Vitals measurement.
+  - Injects Schema.org Product and Offer JSON-LD from product fields Shopify
+    already stores. It does not claim shipping, condition, or review data.
   - Advertises the store's /llms.txt AI crawler feed via a discovery link tag.
 {% endcomment %}
 
@@ -55,7 +54,6 @@
     {%- assign canonical_product_url = shop.url | append: product.url -%}
     {%- assign brand_name = product.vendor | default: store_brand_name -%}
     {%- assign clean_desc = product.description | strip_html | strip_newlines | truncate: 4800 -%}
-    {%- assign next_year = 'now' | date: '%Y' | plus: 1 -%}
 
     <script type="application/ld+json">
     {
@@ -75,9 +73,6 @@
       {%- if product.selected_or_first_available_variant.sku != blank -%}
       "sku": {{ product.selected_or_first_available_variant.sku | json }},
       {%- endif -%}
-      {%- if product.selected_or_first_available_variant.barcode != blank -%}
-      "gtin": {{ product.selected_or_first_available_variant.barcode | json }},
-      {%- endif -%}
       {%- if product.type != blank -%}
       "category": {{ product.type | json }},
       {%- endif -%}
@@ -96,8 +91,6 @@
           {%- endif -%}
           "price": {{ variant.price | divided_by: 100.0 | json }},
           "priceCurrency": {{ cart.currency.iso_code | default: shop.currency | json }},
-          "priceValidUntil": "{{ next_year }}-12-31",
-          "itemCondition": "https://schema.org/NewCondition",
           "availability": "https://schema.org/{% if variant.available %}InStock{% else %}OutOfStock{% endif %}",
           "seller": {
             "@type": "Organization",
@@ -130,7 +123,7 @@
             "name": {{ 'How much does ' | append: product.title | append: ' cost?' | json }},
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": {{ product.title | append: ' is available at ' | append: store_brand_name | append: ' starting at ' | append: formatted_price | append: '.' | json }}
+              "text": {{ product.title | append: ' is listed at ' | append: store_brand_name | append: ' from ' | append: formatted_price | append: '.' | json }}
             }
           },
           {
@@ -138,17 +131,17 @@
             "name": {{ 'Is ' | append: product.title | append: ' currently in stock?' | json }},
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": {% if product.available %}{{ 'Yes, ' | append: product.title | append: ' is in stock and ready to ship from ' | append: store_brand_name | append: '.' | json }}{% else %}{{ product.title | append: ' is currently out of stock at ' | append: store_brand_name | append: '.' | json }}{% endif %}
+              "text": {% if product.available %}{{ 'Shopify currently shows ' | append: product.title | append: ' as available at ' | append: store_brand_name | append: '.' | json }}{% else %}{{ 'Shopify currently shows ' | append: product.title | append: ' as unavailable at ' | append: store_brand_name | append: '.' | json }}{% endif %}
             }
-          },
+          }{% if product.vendor != blank %},
           {
             "@type": "Question",
-            "name": {{ 'Who manufactures ' | append: product.title | append: '?' | json }},
+            "name": {{ 'Which vendor is listed for ' | append: product.title | append: '?' | json }},
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": {{ product.title | append: ' is crafted by ' | append: brand_name | append: ' and sold officially by ' | append: store_brand_name | append: '.' | json }}
+              "text": {{ 'Shopify lists ' | append: product.vendor | append: ' as the vendor.' | json }}
             }
-          }
+          }{% endif %}
         ]
       }
       </script>
@@ -184,19 +177,19 @@
     {
       "type": "checkbox",
       "id": "enable_conversational_faq",
-      "label": "Inject Conversational FAQ JSON-LD for AI search",
+      "label": "Add FAQ JSON-LD from the product title, price, and stock",
       "default": true
     },
     {
       "type": "checkbox",
       "id": "enable_lcp_preload",
-      "label": "Preload primary product image (Core Web Vitals LCP)",
+      "label": "Preload the primary product image",
       "default": true
     },
     {
       "type": "checkbox",
       "id": "enable_llms_link",
-      "label": "Advertise /llms.txt AI crawler discovery feed",
+      "label": "Add a link to /llms.txt",
       "default": true
     }
   ]

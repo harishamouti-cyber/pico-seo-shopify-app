@@ -28,8 +28,8 @@ export default function Index() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#090d16",
-        color: "#f8fafc",
+        background: "#f6f6f7",
+        color: "#202223",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -42,11 +42,11 @@ export default function Index() {
         style={{
           maxWidth: 560,
           width: "100%",
-          background: "#111827",
-          border: "1px solid #1e293b",
-          borderRadius: 18,
+          background: "#ffffff",
+          border: "1px solid #e3e3e3",
+          borderRadius: 12,
           padding: "36px 32px",
-          boxShadow: "0 24px 48px rgba(0, 0, 0, 0.35)",
+          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
         }}
       >
         <span
@@ -54,13 +54,13 @@ export default function Index() {
             display: "inline-block",
             padding: "4px 10px",
             borderRadius: 999,
-            background: "rgba(37, 99, 235, 0.18)",
-            color: "#60a5fa",
+            background: "#f2f7fe",
+            color: "#1f5199",
             fontSize: 12,
             fontWeight: 600,
           }}
         >
-          PicoSEO • Built for Shopify
+          PicoSEO
         </span>
         <h1
           style={{
@@ -70,19 +70,19 @@ export default function Index() {
             letterSpacing: "-0.02em",
           }}
         >
-          Zero-bloat SEO, JSON-LD Schema, IndexNow & /llms.txt AI Feed
+          Open PicoSEO from Shopify Admin
         </h1>
         <p
           style={{
             margin: "0 0 24px",
             fontSize: 14.5,
             lineHeight: 1.6,
-            color: "#94a3b8",
+            color: "#6d7175",
           }}
         >
-          1-click bulk metadata and alt-text optimization, zero-JavaScript Liquid
-          structured data, real-time IndexNow search engine pings, and an automated
-          /llms.txt catalog feed for ChatGPT and Perplexity visibility.
+          Merchants install and open this app from the Shopify admin. The form
+          below is only for local development with the Shopify CLI. It is not
+          the App Store install path.
         </p>
 
         {showForm && (
@@ -93,7 +93,7 @@ export default function Index() {
                 display: "block",
                 fontSize: 12.5,
                 fontWeight: 600,
-                color: "#cbd5e1",
+                color: "#202223",
                 marginBottom: 6,
               }}
             >
@@ -110,9 +110,9 @@ export default function Index() {
                   flex: 1,
                   padding: "10px 14px",
                   borderRadius: 10,
-                  border: "1px solid #334155",
-                  background: "#090d16",
-                  color: "#f8fafc",
+                  border: "1px solid #c9cccf",
+                  background: "#ffffff",
+                  color: "#202223",
                   fontSize: 14,
                 }}
               />

@@ -1,81 +1,78 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { buildLlmsDocument, toLlmsProduct } from "../lib/llms";
+import { authenticateAppProxy } from "../services/app-proxy.server";
 import { fetchCatalogAudit } from "../services/catalog-seo.server";
 import { getOrCreateSettings } from "../services/settings.server";
-import { authenticate, unauthenticated } from "../shopify.server";
+
+const TEXT = {
+  "Content-Type": "text/plain; charset=utf-8",
+  "X-Robots-Tag": "noindex",
+};
 
 /**
- * Dynamic Shopify App Proxy route serving `/llms.txt` (via `/apps/picoseo/llms.txt`
- * or root `/llms.txt` redirect).
- * Outputs a clean Markdown & plain-text catalog summary listing the store's
- * brand profile, active product titles, prices, availability, and direct
- * purchase URLs for ChatGPT, Perplexity, and Claude.
+ * Storefront app-proxy route for `/apps/picoseo/llms.txt`.
+ * Shopify signs the request. The feed lists active products from the latest
+ * scan only.
  */
 export async function loader({ request }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  let shop = url.searchParams.get("shop") || "";
-  let adminClient: { graphql: (q: string, o?: { variables?: Record<string, unknown> }) => Promise<Response> } | null = null;
+  let shop: string | null = null;
+  let adminClient: { graphql: (q: string, o?: { variables?: Record<string, unknown> }) => Promise<Response> } | null =
+    null;
 
   try {
-    const proxyCtx = await authenticate.public.appProxy(request);
-    if (proxyCtx.session?.shop) {
-      shop = proxyCtx.session.shop;
-    }
-    if (proxyCtx.admin) {
-      adminClient = proxyCtx.admin;
-    }
+    const proxy = await authenticateAppProxy(request);
+    shop = proxy.shop;
+    adminClient = proxy.admin;
   } catch {
-    // Allow direct inspection in development / simulator with ?shop=
-  }
-
-  if (!adminClient && shop) {
-    try {
-      const unauth = await unauthenticated.admin(shop);
-      adminClient = unauth.admin;
-    } catch {
-      adminClient = null;
-    }
+    return new Response("PicoSEO could not verify this app proxy request.\n", {
+      status: 401,
+      headers: TEXT,
+    });
   }
 
   if (!shop || !adminClient) {
-    const fallbackBody = [
-      "# PicoSEO AI Crawler Feed (/llms.txt)",
-      "",
-      "> Connect a Shopify store or pass `?shop=your-store.myshopify.com` to render the live catalog feed for ChatGPT, Perplexity, and Claude.",
-    ].join("\n");
-    return new Response(fallbackBody, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "public, max-age=60",
-      },
+    return new Response("PicoSEO is not installed for this store, or the offline session is missing.\n", {
+      status: 401,
+      headers: TEXT,
     });
   }
 
-  const settings = await getOrCreateSettings(shop, adminClient);
+  let settings;
+  try {
+    settings = await getOrCreateSettings(shop, adminClient);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Settings are unavailable.";
+    return new Response(`# PicoSEO\n\n> ${message}\n`, { status: 503, headers: TEXT });
+  }
+
   if (!settings.enableLlmsTxtFeed) {
-    return new Response(`# ${settings.storeDisplayName}\n\n> AI crawler feed (/llms.txt) is currently disabled by the merchant.\n`, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Robots-Tag": "noindex",
-      },
-    });
+    return new Response(
+      `# ${settings.storeDisplayName}\n\n> The catalog feed is turned off in PicoSEO settings.\n`,
+      { status: 200, headers: TEXT },
+    );
   }
 
   const audit = await fetchCatalogAudit(adminClient, shop, 50);
-  const activeProducts = audit.products
-    .filter((p) => p.status === "ACTIVE" || audit.products.every((item) => item.status !== "ACTIVE"))
-    .map((p) => toLlmsProduct(p, audit.store));
+  if (audit.catalogError) {
+    return new Response(`# ${settings.storeDisplayName}\n\n> ${audit.catalogError}\n`, {
+      status: 503,
+      headers: TEXT,
+    });
+  }
 
-  const document = buildLlmsDocument(audit.store, activeProducts);
+  const activeProducts = audit.products
+    .filter((product) => product.status === "ACTIVE")
+    .map((product) => toLlmsProduct(product, audit.store));
+
+  const document = buildLlmsDocument(audit.store, activeProducts, new Date(), {
+    sampleLimit: audit.scannedLimit,
+  });
 
   return new Response(document, {
     status: 200,
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "public, max-age=300, s-maxage=900, stale-while-revalidate=3600",
-      "X-PicoSEO-Feed": "llms-txt-v1",
     },
   });
 }

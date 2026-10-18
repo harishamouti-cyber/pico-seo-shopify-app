@@ -1,5 +1,6 @@
 import type { PicoSeoSettings } from "@prisma/client";
 import prisma from "../db.server";
+import { DEFAULT_TEMPLATES } from "../lib/seo-template";
 import { sanitizeStoreName } from "../lib/store-name";
 import type { StoreContext } from "../lib/types";
 import { type AdminClient, gql } from "./graphql.server";
@@ -7,13 +8,15 @@ import { generateIndexNowKey } from "./indexnow.server";
 
 export const PROXY_PREFIX = "/apps/picoseo";
 
+export interface ShopInfo {
+  name: string;
+  myshopifyDomain: string;
+  currencyCode: string;
+  primaryDomain: { host: string } | null;
+}
+
 interface ShopQuery {
-  shop: {
-    name: string;
-    myshopifyDomain: string;
-    currencyCode: string;
-    primaryDomain: { host: string } | null;
-  };
+  shop: ShopInfo;
 }
 
 const SHOP_QUERY = `#graphql
@@ -42,10 +45,9 @@ export function defaultSettings(shop: string, storeDisplayName?: string): PicoSe
     storeDisplayName: sanitizeStoreName(storeDisplayName || shop),
     subscriptionStatus: "INACTIVE",
     autoSyncOnProductUpdate: false,
-    metaTitleTemplate: "{{product_title}} | Official {{store_name}}",
-    metaDescriptionTemplate:
-      "Shop {{product_title}} ({{variant_title}}) for {{price}} at {{store_name}}. Fast shipping and verified quality.",
-    imageAltTemplate: "{{product_title}} - {{variant_title}} by {{store_name}}",
+    metaTitleTemplate: DEFAULT_TEMPLATES.metaTitleTemplate,
+    metaDescriptionTemplate: DEFAULT_TEMPLATES.metaDescriptionTemplate,
+    imageAltTemplate: DEFAULT_TEMPLATES.imageAltTemplate,
     enableJsonLdSchema: true,
     enableLcpImagePreload: true,
     enableLlmsTxtFeed: true,
@@ -94,8 +96,10 @@ export async function getOrCreateSettings(shop: string, admin?: AdminClient): Pr
     });
   } catch (error) {
     if (error instanceof Response) throw error;
-    console.warn("[PicoSEO] getOrCreateSettings database fallback:", error);
-    return defaultSettings(shop);
+    console.warn("[PicoSEO] getOrCreateSettings failed:", error);
+    throw new Error(
+      "PicoSEO could not read or create this shop's settings. Check that DATABASE_URL points at a database this app can write, then reload.",
+    );
   }
 }
 
@@ -123,22 +127,29 @@ const REDIRECT_CREATE = `#graphql
  */
 export async function syncThemeConfig(admin: AdminClient, settings: PicoSeoSettings) {
   const { currentAppInstallation } = await gql<{ currentAppInstallation: { id: string } }>(admin, INSTALLATION_QUERY);
-  await gql(admin, METAFIELDS_SET, {
-    metafields: [
-      {
-        ownerId: currentAppInstallation.id,
-        namespace: "picoseo",
-        key: "config",
-        type: "json",
-        value: JSON.stringify({
-          json_ld: settings.enableJsonLdSchema,
-          lcp_preload: settings.enableLcpImagePreload,
-          llms: settings.enableLlmsTxtFeed,
-          store_name: settings.storeDisplayName,
-        }),
-      },
-    ],
-  });
+  const result = await gql<{ metafieldsSet: { userErrors: { field?: string[] | null; message: string }[] } }>(
+    admin,
+    METAFIELDS_SET,
+    {
+      metafields: [
+        {
+          ownerId: currentAppInstallation.id,
+          namespace: "picoseo",
+          key: "config",
+          type: "json",
+          value: JSON.stringify({
+            json_ld: settings.enableJsonLdSchema,
+            lcp_preload: settings.enableLcpImagePreload,
+            llms: settings.enableLlmsTxtFeed,
+            store_name: settings.storeDisplayName,
+          }),
+        },
+      ],
+    },
+  );
+  if (result.metafieldsSet.userErrors?.length) {
+    throw new Error(result.metafieldsSet.userErrors.map((error) => error.message).join(" "));
+  }
 }
 
 /**

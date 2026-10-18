@@ -13,7 +13,6 @@ export function buildProductJsonLd(product: PicoProduct, store: StoreContext, op
   const brandName = product.vendor || store.storeName;
   const plainDescription = product.description.replace(/\s+/g, " ").trim();
   const inStock = product.variants.some((v) => v.availableForSale);
-  const nextYear = new Date().getFullYear() + 1;
 
   const productNode: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -34,8 +33,6 @@ export function buildProductJsonLd(product: PicoProduct, store: StoreContext, op
       price: Number(v.price),
       priceCurrency: store.currencyCode,
       availability: `https://schema.org/${v.availableForSale ? "InStock" : "OutOfStock"}`,
-      itemCondition: "https://schema.org/NewCondition",
-      priceValidUntil: `${nextYear}-12-31`,
       seller: { "@type": "Organization", name: store.storeName },
     })),
   };
@@ -50,14 +47,19 @@ export function buildProductJsonLd(product: PicoProduct, store: StoreContext, op
       "@type": "FAQPage",
       mainEntity: [
         qa(`What is ${product.title}?`, shortDescription),
-        qa(`How much does ${product.title} cost?`, `${product.title} is available from ${store.storeName} for ${price}.`),
+        qa(
+          `How much does ${product.title} cost?`,
+          `${product.title} is listed at ${store.storeName} from ${price}.`,
+        ),
         qa(
           `Is ${product.title} in stock?`,
           inStock
-            ? `Yes, ${product.title} is currently in stock and ships from ${store.storeName}.`
-            : `${product.title} is currently out of stock. Check back soon at ${store.storeName}.`,
+            ? `Shopify currently shows ${product.title} as available at ${store.storeName}.`
+            : `Shopify currently shows ${product.title} as unavailable at ${store.storeName}.`,
         ),
-        qa(`Who makes ${product.title}?`, `${product.title} is made by ${brandName}.`),
+        ...(product.vendor
+          ? [qa(`Which vendor is listed for ${product.title}?`, `Shopify lists ${product.vendor} as the vendor.`)]
+          : []),
       ],
     });
   }

@@ -156,12 +156,24 @@ export function buildBillingReturnUrl(shop: string, requestUrl: string): string 
   return `${origin}/app/billing?shop=${encodeURIComponent(shop)}&charge=confirmed`;
 }
 
+/**
+ * Test charges are the default outside production so local and preview
+ * installs are not billed. Production bills for real unless
+ * SHOPIFY_BILLING_TEST is explicitly "true".
+ */
+export function isBillingTestCharge() {
+  const flag = process.env.SHOPIFY_BILLING_TEST;
+  if (flag === "true") return true;
+  if (flag === "false") return false;
+  return process.env.VERCEL_ENV !== "production";
+}
+
 export async function createProSubscription(
   admin: AdminClient,
   shop: string,
   requestUrl: string,
-): Promise<{ confirmationUrl: string }> {
-  const isTest = process.env.SHOPIFY_BILLING_TEST !== "false";
+): Promise<{ confirmationUrl: string; test: boolean }> {
+  const isTest = isBillingTestCharge();
   const returnUrl = buildBillingReturnUrl(shop, requestUrl);
 
   const data = await gql<{
@@ -187,7 +199,7 @@ export async function createProSubscription(
     throw new Error("Shopify did not return a billing confirmation URL.");
   }
 
-  return { confirmationUrl: data.appSubscriptionCreate.confirmationUrl };
+  return { confirmationUrl: data.appSubscriptionCreate.confirmationUrl, test: isTest };
 }
 
 export async function cancelProSubscription(

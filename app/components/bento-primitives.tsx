@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { scoreTone } from "../lib/seo-score";
-import { ExternalArrowIcon, ImageFrameIcon, ShieldCheckIcon } from "./icons";
+import { ImageFrameIcon } from "./icons";
 
 export function LiveStatusDot({
   tone = "live",
@@ -36,13 +36,14 @@ export function RadialScoreGauge({
   score,
   size = 168,
 }: {
-  score: number;
+  score: number | null;
   size?: number;
 }) {
+  const hasScore = typeof score === "number" && Number.isFinite(score);
   const stroke = 12;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const clamped = Math.max(0, Math.min(100, score));
+  const clamped = hasScore ? Math.max(0, Math.min(100, score)) : 0;
   const offset = circumference - (clamped / 100) * circumference;
   const color =
     clamped >= 80 ? "#10b981" : clamped >= 50 ? "#f59e0b" : "#ef4444";
@@ -59,7 +60,17 @@ export function RadialScoreGauge({
         margin: "0 auto",
       }}
     >
-      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+      <svg
+        width={size}
+        height={size}
+        style={{ transform: "rotate(-90deg)" }}
+        role="img"
+        aria-label={
+          hasScore
+            ? `SEO score ${clamped} out of 100 for this product scan`
+            : "No SEO score because this scan returned no products"
+        }
+      >
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -102,7 +113,7 @@ export function RadialScoreGauge({
             color: "#0f172a",
           }}
         >
-          {clamped}
+          {hasScore ? clamped : "—"}
         </span>
         <span
           style={{
@@ -112,7 +123,7 @@ export function RadialScoreGauge({
             marginTop: 2,
           }}
         >
-          Readiness score
+          {hasScore ? "This scan" : "No score"}
         </span>
       </div>
     </div>
@@ -178,149 +189,4 @@ export function SpringSegmentedControl<T extends string>({
   );
 }
 
-const PARTNER_APPS = [
-  {
-    name: "RestockPing",
-    tagline: "Instant back-in-stock SMS & email alerts that recover lost demand.",
-    badge: "Inventory recovery",
-    href: "https://apps.shopify.com/search?q=RestockPing",
-  },
-  {
-    name: "DropClock",
-    tagline: "High-converting product drop countdowns and hype launch timers.",
-    badge: "Launch urgency",
-    href: "https://apps.shopify.com/search?q=DropClock",
-  },
-  {
-    name: "CartLock",
-    tagline: "Reserve in-cart inventory & prevent checkout sniping during flash sales.",
-    badge: "Cart protection",
-    href: "https://apps.shopify.com/search?q=CartLock",
-  },
-  {
-    name: "PromoLint",
-    tagline: "Audit discount codes & prevent accidental margin-stacking leaks.",
-    badge: "Margin guard",
-    href: "https://apps.shopify.com/search?q=PromoLint",
-  },
-  {
-    name: "PrepaidFlip",
-    tagline: "Convert COD orders into prepaid payments with instant incentives.",
-    badge: "Cashflow boost",
-    href: "https://apps.shopify.com/search?q=PrepaidFlip",
-  },
-] as const;
 
-export function PartnerSuiteFooter() {
-  return (
-    <section
-      className="pico-bento-card pico-bento-card--slate"
-      style={{ marginTop: 28 }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
-              background: "#0f172a",
-              color: "#ffffff",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ShieldCheckIcon size={17} />
-          </span>
-          <div>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#0f172a",
-              }}
-            >
-              Complete your store revenue suite
-            </h2>
-            <p
-              style={{
-                margin: "2px 0 0",
-                fontSize: 12.5,
-                color: "#64748b",
-              }}
-            >
-              Zero-bloat companion instruments engineered with the same lightweight architecture as PicoSEO.
-            </p>
-          </div>
-        </div>
-        <span className="pico-pill pico-pill--info">Built for Shopify ecosystem</span>
-      </div>
-
-      <div className="pico-partner-grid">
-        {PARTNER_APPS.map((app) => (
-          <a
-            key={app.name}
-            href={app.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="pico-bento-card pico-bento-card--interactive"
-            style={{
-              padding: "14px 15px",
-              textDecoration: "none",
-              color: "inherit",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              gap: 10,
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 6,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 13.5,
-                    fontWeight: 600,
-                    color: "#0f172a",
-                  }}
-                >
-                  {app.name}
-                </span>
-                <ExternalArrowIcon size={14} style={{ color: "#64748b" }} />
-              </div>
-              <p
-                style={{
-                  margin: "6px 0 0",
-                  fontSize: 12,
-                  lineHeight: 1.45,
-                  color: "#475569",
-                }}
-              >
-                {app.tagline}
-              </p>
-            </div>
-            <div>
-              <span className="pico-pill pico-pill--blue">{app.badge}</span>
-            </div>
-          </a>
-        ))}
-      </div>
-    </section>
-  );
-}

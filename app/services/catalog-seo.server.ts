@@ -363,11 +363,16 @@ export interface CatalogAuditSummary {
   store: StoreContext;
   settings: PicoSeoSettings;
   products: AuditedProduct[];
-  overallScore: number;
+  /** Null when the scan returned no products or the catalog query failed. */
+  overallScore: number | null;
   productsNeedingFix: number;
   missingAltTotal: number;
   optimizedProductsCount: number;
   recentLogs: ProductOptimizationLog[];
+  /** Products requested from Shopify for this screen. Not the full catalog. */
+  scannedLimit: number;
+  catalogError: string | null;
+  settingsUnavailable: boolean;
 }
 
 export async function fetchCatalogAudit(
@@ -376,12 +381,14 @@ export async function fetchCatalogAudit(
   first = 50,
 ): Promise<CatalogAuditSummary> {
   let settings: PicoSeoSettings;
+  let settingsUnavailable = false;
   try {
     settings = await getOrCreateSettings(shop, admin);
   } catch (err) {
     if (err instanceof Response) throw err;
     console.warn("[PicoSEO] getOrCreateSettings fallback:", err);
     settings = defaultSettings(shop);
+    settingsUnavailable = true;
   }
 
   let shopInfo: Awaited<ReturnType<typeof fetchShopInfo>> = {
@@ -401,6 +408,7 @@ export async function fetchCatalogAudit(
   // A failed audit is not an empty catalog with a perfect score.
   const catalogData = await gql<CatalogQueryData>(admin, CATALOG_PRODUCTS_QUERY, { first });
   const rawNodes = catalogData.products.nodes;
+  const catalogError: string | null = null;
 
   let recentLogs: ProductOptimizationLog[] = [];
   try {
@@ -424,7 +432,7 @@ export async function fetchCatalogAudit(
   const overallScore =
     products.length > 0
       ? Math.round(products.reduce((sum, p) => sum + p.audit.score, 0) / products.length)
-      : 100;
+      : null;
 
   const productsNeedingFix = products.filter((p) => needsOptimization(p)).length;
   const missingAltTotal = products.reduce((sum, p) => sum + p.audit.missingAltCount, 0);
@@ -439,6 +447,9 @@ export async function fetchCatalogAudit(
     missingAltTotal,
     optimizedProductsCount,
     recentLogs,
+    scannedLimit: first,
+    catalogError,
+    settingsUnavailable,
   };
 }
 
@@ -633,6 +644,9 @@ export async function optimizeCatalogBulk(
   options?: { forceOverwriteAll?: boolean },
 ): Promise<BulkOptimizeSummary> {
   const audit = await fetchCatalogAudit(admin, shop, 50);
+  if (audit.catalogError) {
+    throw new Error(audit.catalogError);
+  }
   const targets = options?.forceOverwriteAll
     ? audit.products
     : audit.products.filter((p) => needsOptimization(p));
@@ -658,7 +672,7 @@ export async function optimizeCatalogBulk(
   const averageScoreAfter =
     results.length > 0
       ? Math.round(results.reduce((s, r) => s + r.seoScoreAfter, 0) / results.length)
-      : audit.overallScore;
+      : (audit.overallScore ?? 0);
 
   return {
     optimizedCount: results.length,
